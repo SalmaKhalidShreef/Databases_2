@@ -4,13 +4,19 @@ import java.io.IOException;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Set;
-
+import java.util.Vector;
 
 
 public class DBApp implements DBAppInterface{
 
+    Vector<Table> tableList;
+    public DBApp (){
+       Vector<Table> tableList= new Vector<Table>();
+    }
+
     @Override
     public void init() {
+
 
     }
 
@@ -21,6 +27,8 @@ public class DBApp implements DBAppInterface{
         csvWriter.write(getAttributes(tableName,clusteringKey,colNameType,colNameMin,colNameMax));
         csvWriter.flush();
         csvWriter.close();
+        Table table = new Table(tableName,clusteringKey);
+        this.tableList.add(table);
     /*    FileOutputStream fout=new FileOutputStream("src/main/resources/metadata.csv");
         String data =getAttributes(tableName,clusteringKey,colNameType,colNameMin,colNameMax);
         fout.write(data.getBytes(), 0, data.length());
