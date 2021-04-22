@@ -3,12 +3,14 @@ import java.util.Hashtable;
 import java.util.Vector;
 
 public class Page  implements Serializable {
-    static int number=0;
+
     Vector<Hashtable> list;
     int listNumber;
-    public Page( ){
+    String PageID;
+    public Page(String tableName ){
         list =new Vector<Hashtable>();
-        listNumber = ++number;
+
+        PageID=tableName;
 
     }
 
