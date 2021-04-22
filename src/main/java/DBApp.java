@@ -1,3 +1,5 @@
+import org.junit.jupiter.api.parallel.Resources;
+
 import java.io.*;
 import java.util.*;
 
@@ -109,18 +111,22 @@ public class DBApp implements DBAppInterface{
                 throw new DBAppException("Table not found");
         }
 
-
-
-
-
-
-
-
         if (target.pages.size()==0){
-            Page page =new Page(tableName+target.pages.size());}
+            Page page =new Page(tableName+target.pages.size());
+            checkDataTypes(tableName,colNameValue);
+            page.list.add(colNameValue);
+            serializePage(page);
+            target.pages.add(page);
+        }
+        else{
+            String clustering = target.clusteringKey;
+
+
+        }
 
 
     }
+
 
     @Override
     public void updateTable(String tableName, String clusteringKeyValue, Hashtable<String, Object> columnNameValue) throws DBAppException {
@@ -237,7 +243,59 @@ public class DBApp implements DBAppInterface{
             return "NA";
     }
 
+public static void serializePage(Page p){
+        String pageName = p.PageID;
+    try
+    {
+        //Saving of object in a file
+        FileOutputStream file = new FileOutputStream("src/main/resources/PageID.bin");
+        ObjectOutputStream out = new ObjectOutputStream(file);
 
+        // Method for serialization of object
+        out.writeObject(p);
+
+        out.close();
+        file.close();
+
+        System.out.println("Object has been serialized");
+
+    }
+
+    catch(IOException ex)
+    {
+        System.out.println("IOException is caught");
+    }
+
+}
+
+public int pageRows(String filePath) throws IOException {
+        int nRows=0;
+    try
+    {
+        // Reading the object from a file
+        FileInputStream file = new FileInputStream(filePath);
+        ObjectInputStream in = new ObjectInputStream(file);
+
+        // Method for deserialization of object
+        Page p = (Page) in.readObject();
+
+        in.close();
+        file.close();
+     nRows = p.list.size();
+
+    }
+
+    catch(IOException ex)
+    {
+        System.out.println("IOException is caught");
+    }
+
+    catch(ClassNotFoundException ex)
+    {
+        System.out.println("ClassNotFoundException is caught");
+    }
+    return nRows;
+}
 
  public static void main (String[] args) throws DBAppException, IOException {
        Hashtable table = new Hashtable<String,String>();
@@ -267,6 +325,7 @@ public class DBApp implements DBAppInterface{
      DBApp db =new DBApp();
    db.init();
      db.createTable("marvelous","Pen",table,table1,table2);
+
     /* FileWriter cw = new FileWriter("src/main/resources/metadata.csv",true);
      String[] line = {"4", "David", "USA"};
      //Writing data to the csv file

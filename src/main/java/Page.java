@@ -7,10 +7,10 @@ public class Page  implements Serializable {
     Vector<Hashtable> list;
     int listNumber;
     String PageID;
-    public Page(String tableName ){
+    public Page(String pageName ){
         list =new Vector<Hashtable>();
 
-        PageID=tableName;
+        PageID=pageName;
 
     }
 
