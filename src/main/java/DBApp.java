@@ -1,5 +1,3 @@
-import org.junit.jupiter.api.parallel.Resources;
-
 import java.io.*;
 import java.util.*;
 
@@ -41,12 +39,12 @@ public class DBApp implements DBAppInterface{
 
     public void createTable(String tableName, String clusteringKey, Hashtable<String,String> colNameType,
                             Hashtable<String,String> colNameMin, Hashtable<String,String> colNameMax) throws DBAppException, IOException {
-
+        Vector<String> colName=new Vector<>();
         try {
             String columnName = "";
             Set<String> columns = colNameType.keySet();
             for (String k : columns) {
-
+                colName.add(k);
                 columnName = k;
                 if (!(colNameMax.containsKey(k) && colNameMin.containsKey(k)))
                     throw new DBAppException("invalid input");
@@ -75,56 +73,81 @@ public class DBApp implements DBAppInterface{
 
     @Override
     public void insertIntoTable(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
-        Vector<Table> tables =null;
-        try
-        {
+        Vector<Table> tables = null;
+        int maxRows = 0;
+        try {
+            maxRows = readConfig("MaximumRowsCountinPage");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
             // Reading the object from a file
             FileInputStream file = new FileInputStream("src/main/resources/Tables.bin");
             ObjectInputStream in = new ObjectInputStream(file);
-
             // Method for deserialization of object
             tables = (Vector<Table>) in.readObject();
-
             in.close();
             file.close();
 
             System.out.println("Object has been deserialized ");
-
-        }
-
-        catch(IOException ex)
-        {
+        } catch (IOException ex) {
             System.out.println("IOException is caught");
-        }
-
-        catch(ClassNotFoundException ex)
-        {
+        } catch (ClassNotFoundException ex) {
             System.out.println("ClassNotFoundException is caught");
         }
         Table target = null;
-        for(int i =0; i<tables.size();i++){
-            if (tables.get(i).tableName.equals(tableName)){
-                target=tables.get(i);
+        for (int i = 0; i < tables.size(); i++) {
+            if (tables.get(i).tableName.equals(tableName)) {
+                target = tables.get(i);
                 break;
-        }
-            if(target==null)
+            }
+            if (target == null)
                 throw new DBAppException("Table not found");
         }
+        String currenyClustering =colNameValue.get(target.clusteringKey).toString();
 
-        if (target.pages.size()==0){
-            Page page =new Page(tableName+target.pages.size());
-            checkDataTypes(tableName,colNameValue);
+        //table has no pages case
+        if (target.pages.size() == 0) {
+
+            Page page = new Page(tableName + target.pages.size());
+            checkDataTypes(tableName, colNameValue);
             page.list.add(colNameValue);
             serializePage(page);
             target.pages.add(page);
+            target.pages.get(0).clusterings.add(colNameValue.get(target.clusteringKey).toString());
+            target.min.add(colNameValue.get(target.clusteringKey).toString());
+            target.max.add(colNameValue.get(target.clusteringKey).toString());
         }
         else{
-            String clustering = target.clusteringKey;
+            //case the no of pages the table has is only 1
+            if (target.pages.size()==1){
+                Page currentPage = target.pages.get(0);
+                if(currentPage.list.size()<maxRows){
+                    int x =0;
+                    int idx = Collections.binarySearch(currentPage.clusterings,colNameValue.get(target.clusteringKey).toString());
+                    if(idx>0)
+                        throw new DBAppException("you entered a primary key that already exists");
+                    else{
+                        x= -1-idx;
+                        if(currentPage.list.size()+1<maxRows){
+                            currentPage.list.insertElementAt(colNameValue,x);
+                            //inserting the clustering key at the clusterings vector
+                            currentPage.clusterings.insertElementAt((String) colNameValue.get(target.clusteringKey.toString()),x);
 
+                            if(currenyClustering.compareTo((String) target.min.get(0))==-1){
+                                target.min.set(0,currenyClustering);
+                            }
+                            if(currenyClustering.compareTo(target.max.get(0))==1)
+                                target.max.set(0,currenyClustering);
+                        }
+                        else{
 
+                        }
+
+                    }
+                }
+            }
         }
-
-
     }
 
 
@@ -173,10 +196,12 @@ public class DBApp implements DBAppInterface{
 
     }
 
-    public static void checkDataTypes (String tableName, Hashtable<String, Object> colNameValue){
+    public static void checkDataTypes (String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
 
         //  #####   parsing a CSV file into vector of String[]  #####
 
+        Object min;
+        Object max;
         Vector<String[]> Data =new Vector<String[]>();
         String line = "";
         String splitBy = ",";
@@ -196,8 +221,21 @@ public class DBApp implements DBAppInterface{
         {
             e.printStackTrace();
         }
-
-
+            for(int j =0 ;j<Data.size();j++){
+                if(Data.get(j)[0].equals(tableName)) {
+                    min = Data.get(j)[Data.get(j).length - 2];
+                    String colName = Data.get(j)[1];
+                    if (colNameValue.get(colName) != null) {
+                        if (colNameValue.get(colName).toString().compareTo(min.toString()) == -1) {
+                            throw new DBAppException("you entered value below minimum");
+                        }
+                        max = Data.get(j)[Data.get(j).length - 1];
+                        if (colNameValue.get(colName).toString().compareTo(max.toString()) == 1) {
+                            throw new DBAppException("you entered value above maximum");
+                        }
+                    }
+                }
+            }
 
         //  ######   looping over table attributes   #######
         String columnName="";
@@ -205,6 +243,7 @@ public class DBApp implements DBAppInterface{
         for(String k : columns){
             columnName = k;
             String dataType =getType(colNameValue.get(k));
+
             try {
                 if (dataType.equals( "NA"))
                     throw new DBAppException("invalid Data Type");
@@ -227,6 +266,7 @@ public class DBApp implements DBAppInterface{
 
 
         }
+
 
     }
 
@@ -268,35 +308,14 @@ public static void serializePage(Page p){
 
 }
 
-public int pageRows(String filePath) throws IOException {
+public int readConfig(String key) throws IOException {
         int nRows=0;
-    try
-    {
-        // Reading the object from a file
-        FileInputStream file = new FileInputStream(filePath);
-        ObjectInputStream in = new ObjectInputStream(file);
+    FileReader reader=new FileReader("src/main/resources/DBApp.config");
 
-        // Method for deserialization of object
-        Page p = (Page) in.readObject();
-
-        in.close();
-        file.close();
-     nRows = p.list.size();
-
-    }
-
-    catch(IOException ex)
-    {
-        System.out.println("IOException is caught");
-    }
-
-    catch(ClassNotFoundException ex)
-    {
-        System.out.println("ClassNotFoundException is caught");
-    }
-    return nRows;
+    Properties p=new Properties();
+    p.load(reader);
+    return Integer.parseInt(p.getProperty(key));
 }
-
  public static void main (String[] args) throws DBAppException, IOException {
        Hashtable table = new Hashtable<String,String>();
 
