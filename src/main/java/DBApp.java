@@ -1,3 +1,5 @@
+import org.junit.jupiter.api.parallel.Resources;
+
 import java.io.*;
 import java.util.*;
 
@@ -5,9 +7,11 @@ import java.util.*;
 public class DBApp implements DBAppInterface{
 
     Vector<Table> tableList;
+    Vector<String> tableNames;
+
     public DBApp (){
        Vector<Table> tableList= new Vector<Table>();
-
+        tableNames = new Vector<>();
 
     }
 
@@ -56,6 +60,8 @@ public class DBApp implements DBAppInterface{
             csvWriter.close();
             Table table = new Table(tableName, clusteringKey);
             this.tableList.add(table);
+            this.tableNames.add(tableName);
+            serializeTable(table);
         }
         catch(Exception e){
         System.out.print(e.getMessage());
@@ -302,6 +308,9 @@ public class DBApp implements DBAppInterface{
 
     @Override
     public void deleteFromTable(String tableName, Hashtable<String, Object> columnNameValue) throws DBAppException {
+        Page p = getPage(tableName,columnNameValue);
+        int rowIdx = getRow(p, columnNameValue, tableName);
+        p.list.removeElementAt(rowIdx);
 
     }
 
@@ -482,6 +491,133 @@ public int readConfig(String key) throws IOException {
     p.load(reader);
     return Integer.parseInt(p.getProperty(key));
 }
+    public static void serializeTable(Table table){
+        String tableName = table.tableName;
+        try
+        {
+            //Saving of object in a file
+            FileOutputStream file = new FileOutputStream("src/main/resources/"+tableName+".bin");
+            ObjectOutputStream out = new ObjectOutputStream(file);
+
+            // Method for serialization of object
+            out.writeObject(table);
+
+            out.close();
+            file.close();
+
+            System.out.println("Object has been serialized");
+
+        }
+
+        catch(IOException ex)
+        {
+            System.out.println("IOException is caught");
+        }
+
+    }
+    public static Table deserializeTable(String tableName){
+        Table table = null;
+        String filePath = "src/main/resources/"+tableName+".bin";
+        try {
+            // Reading the object from a file
+            FileInputStream file = new FileInputStream(filePath);
+            ObjectInputStream in = new ObjectInputStream(file);
+            // Method for deserialization of object
+            table = (Table) in.readObject();
+            in.close();
+            file.close();
+
+            System.out.println("Object has been deserialized ");
+        } catch (IOException ex) {
+            System.out.println("IOException is caught");
+        } catch (ClassNotFoundException ex) {
+            System.out.println("ClassNotFoundException is caught");
+        }
+        return table;
+    }
+    public Page getPage(String tableName , Hashtable<String,Object> colNameValue) throws DBAppException {
+        Page p = null;
+        //table doesnt exist
+        if(!this.tableNames.contains(tableName))
+            throw new DBAppException("table doesn't exist!");
+        else {
+            Table t = (Table) deserializeTable(tableName);
+            String clustering = t.clusteringKey;
+            //I have the primary key and can search with it
+            if(colNameValue.get(clustering)!=null){
+                int x =   Collections.binarySearch(t.min,colNameValue.get(clustering).toString());
+                //the pk is the min at that page
+                if(x>0){
+                    deserialize("src/main/resources/"+tableName+x+".bin");
+                    p = t.pages.get(x);
+                }
+                else{
+                    int c = x-1;
+                    deserialize("src/main/resources/"+tableName+c+".bin");
+
+                    p=t.pages.get(x-1);
+                }
+            }
+            else{
+                //looping over all table pages
+                for(int i =0 ; i<t.pages.size();i++){
+                    String pageID =t.tableName+i;
+                    String filePath = "src/main/resources/"+pageID+".bin";
+                    p = deserialize(filePath);
+                    //looping over each page
+                    for(int j =0;j<p.list.size();j++){
+                        String currRow = p.list.get(j).toString();
+                        String entry = colNameValue.toString();
+                        if(currRow.contains(entry))
+                            return p;
+                    }
+                }
+            }
+        }
+
+        return p;}
+    public int getRow (Page p , Hashtable<String,Object> colNameValue,String clusteringKey) throws DBAppException {
+        int idx=0;
+        //table doesnt exist
+         //I have the primary key and can search with it
+            if(colNameValue.get(clusteringKey)!=null){
+                //getting the index by the clustering key
+                idx = Collections.binarySearch(p.clusterings,colNameValue.get(clusteringKey).toString());
+                if(idx>0)
+                    return idx;
+                else if(p.overflowPage!=null &&p.overflowPage.list.size()!=0){
+                    int x = Collections.binarySearch(p.overflowPage.clusterings, colNameValue.get(clusteringKey).toString());
+                    if(x>0){
+                        return x;
+                    }
+                    else
+                        throw new DBAppException("The entered row doesn't exist");
+
+                }
+                else
+                    throw new DBAppException("The entered row doesn't exist");
+            }
+            else{
+
+                for(int i =0; i<p.list.size();i++){
+                    String currRow = p.list.get(i).toString();
+                    String entry = colNameValue.toString();
+                    if(currRow.contains(entry))
+                        return i;
+                }
+                if(p.overflowPage!=null &&p.overflowPage.list.size()!=0){
+                    for(int i =0; i<p.overflowPage.list.size();i++){
+                        String currRow = p.overflowPage.list.get(i).toString();
+                        String entry = colNameValue.toString();
+                        if(currRow.contains(entry))
+                            return i;
+                    }
+                }
+
+                }
+
+
+        return idx;}
  public static void main (String[] args) throws DBAppException, IOException {
        Hashtable table = new Hashtable<String,String>();
 
@@ -510,6 +646,7 @@ public int readConfig(String key) throws IOException {
      DBApp db =new DBApp();
    db.init();
      db.createTable("marvelous","Pen",table,table1,table2);
+
 
     /* FileWriter cw = new FileWriter("src/main/resources/metadata.csv",true);
      String[] line = {"4", "David", "USA"};
