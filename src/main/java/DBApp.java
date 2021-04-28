@@ -303,6 +303,51 @@ public class DBApp implements DBAppInterface{
 
     @Override
     public void updateTable(String tableName, String clusteringKeyValue, Hashtable<String, Object> columnNameValue) throws DBAppException {
+        try {
+            checkDataTypes(tableName,columnNameValue);
+            int i;
+
+            // String s="s/"
+            Boolean flag = false;
+
+            Table table = null;
+            for (i = 0; i < tableList.size(); i++) {
+                table = DeserializeTable("src/main/resources/Tables" + (i + 1) + ".bin");
+                if (table.tableName.equals(tableName)) {
+                    flag = true;
+                    break;
+                }
+
+            }
+            if (flag) {
+                Boolean flagfoundpage = false;
+                int idx = -1;
+                Page page;
+                int j;
+                for (j = 0; j < table.min.size(); j++) {
+                    if (clusteringKeyValue.compareTo((table.min.get(j)).toString()) >= 0 &&
+                            clusteringKeyValue.compareTo((table.max.get(j)).toString()) <= 0) {
+                        page = deserialize("src/main/resources" + "/" + table.tableName + (j + 1) + ".bin");
+                        //idx = Collections.binarySearch(page.clusterings,clusteringKeyValue);
+                        String s = (String) (columnNameValue.keySet().toArray())[0];
+                        columnNameValue.replace(s, columnNameValue.get(s));
+                        flagfoundpage = true;
+
+                        serializePage(page);
+                        break;
+                    }
+                }
+                if (!flagfoundpage) {
+                    throw new DBAppException("Row not found");
+                }
+
+            } else {
+                throw new DBAppException("The table does not exist");
+            }
+            serializeTable(table);
+        }catch (DBAppException e){
+            System.out.println(e.getMessage());
+        }
 
     }
 
@@ -618,7 +663,62 @@ public int readConfig(String key) throws IOException {
 
 
         return idx;}
- public static void main (String[] args) throws DBAppException, IOException {
+
+
+
+    public Table DeserializeTable (String path){
+        Table table = null;
+        try {
+            // Reading the object from a file
+            FileInputStream file = new FileInputStream(path);
+            ObjectInputStream in = new ObjectInputStream(file);
+            // Method for deserialization of object
+            table = (Table) in.readObject();
+            in.close();
+            file.close();
+
+            System.out.println("Object has been deserialized ");
+        } catch (IOException ex) {
+            System.out.println("IOException is caught");
+        } catch (ClassNotFoundException ex) {
+            System.out.println("ClassNotFoundException is caught");
+        }
+        return table;
+
+
+    }
+    public  void serializeTableFunction(Table t){
+        try
+        {
+            int vectorSize=tableList.size();
+            //Saving of object in a file
+            FileOutputStream file = new FileOutputStream("src/main/resources/"+t.tableName+vectorSize+".bin");
+            ObjectOutputStream out = new ObjectOutputStream(file);
+
+            // Method for serialization of object
+            out.writeObject(t);
+
+            out.close();
+            file.close();
+
+            System.out.println("Object has been serialized");
+
+        }
+
+        catch(IOException ex)
+        {
+            System.out.println("IOException is caught");
+        }
+
+
+
+    }
+
+
+
+
+
+    public static void main (String[] args) throws DBAppException, IOException {
        Hashtable table = new Hashtable<String,String>();
 
      table.put("Pen", "soso");
