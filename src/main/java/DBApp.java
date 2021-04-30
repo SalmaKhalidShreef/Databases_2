@@ -1,24 +1,44 @@
 import org.junit.jupiter.api.parallel.Resources;
+import org.junit.validator.ValidateWith;
 
 import java.io.*;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 
-public class DBApp implements DBAppInterface{
+public class DBApp implements DBAppInterface {
 
-    Vector<Table> tableList;
+    Vector<String> tableList;
     Vector<String> tableNames;
 
     public DBApp (){
-       Vector<Table> tableList= new Vector<Table>();
-        tableNames = new Vector<>();
+        tableList= new Vector<String>();
+        tableNames = new Vector<String>();
 
     }
 
     @Override
     public void init() {
+        FileWriter csvWriter = null;
+        String title = "Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max";
+        try {
+            csvWriter = new FileWriter("src/main/resources/metadata.csv", true);
 
-        try
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            csvWriter.write(title);
+            csvWriter.flush();
+            csvWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+        /*try
         {
             //Saving of object in a file
             FileOutputStream file = new FileOutputStream("src/main/resources/Tables.bin");
@@ -37,7 +57,7 @@ public class DBApp implements DBAppInterface{
         catch(IOException ex)
         {
             System.out.println("IOException is caught");
-        }
+        }*/
 
     }
 
@@ -59,19 +79,25 @@ public class DBApp implements DBAppInterface{
             csvWriter.flush();
             csvWriter.close();
             Table table = new Table(tableName, clusteringKey);
-            this.tableList.add(table);
+            this.tableList.add(table.tableName);
+            serializetableList(tableList);
             this.tableNames.add(tableName);
+            serializetableNames(tableNames);
             serializeTable(table);
+
         }
         catch(Exception e){
-        System.out.print(e.getMessage());
+            System.out.print(e.getMessage());
         }
     /*    FileOutputStream fout=new FileOutputStream("src/main/resources/metadata.csv");
         String data =getAttributes(tableName,clusteringKey,colNameType,colNameMin,colNameMax);
         fout.write(data.getBytes(), 0, data.length());
 */
     }
-
+    /*    FileOutputStream fout=new FileOutputStream("src/main/resources/metadata.csv");
+        String data =getAttributes(tableName,clusteringKey,colNameType,colNameMin,colNameMax);
+        fout.write(data.getBytes(), 0, data.length());
+*/
     @Override
     public void createIndex(String tableName, String[] columnNames) throws DBAppException {
 
@@ -79,19 +105,20 @@ public class DBApp implements DBAppInterface{
 
     @Override
     public void insertIntoTable(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
-        Vector<Table> tables = null;
+        Vector<String> tables = null;
         int maxRows = 0;
         try {
             maxRows = readConfig("MaximumRowsCountinPage");
         } catch (IOException e) {
             e.printStackTrace();
         }
-        try {
+        /*try {
             // Reading the object from a file
             FileInputStream file = new FileInputStream("src/main/resources/Tables.bin");
             ObjectInputStream in = new ObjectInputStream(file);
             // Method for deserialization of object
             tables = (Vector<Table>) in.readObject();
+
             in.close();
             file.close();
 
@@ -100,27 +127,34 @@ public class DBApp implements DBAppInterface{
             System.out.println("IOException is caught");
         } catch (ClassNotFoundException ex) {
             System.out.println("ClassNotFoundException is caught");
-        }
+        }*/
         Table target = null;
+        tables = deserializeVector("src/main/resources/data/tablesList.bin");
+        tableNames = deserializeVectorS("src/main/resources/data/tableNames.bin");
+        System.out.println(tables.size());
+        System.out.println(tableNames.size());
         for (int i = 0; i < tables.size(); i++) {
-            if (tables.get(i).tableName.equals(tableName)) {
-                target = tables.get(i);
+            if (tableNames.get(i).compareTo(tableName)==0) {
+                String filePath ="src/main/resources/data/"+tableName+".bin";
+                System.out.println(filePath);
+                target = DeserializeTable(filePath);
                 break;
             }
-            if (target == null)
-                throw new DBAppException("Table not found");
-        }
+
+            }
+        if (target == null)
+            throw new DBAppException("Table not found");
         String currentClustering =colNameValue.get(target.clusteringKey).toString();
 
         //table has no pages case
-        if (target.pages.size() == 0) {
-
-            Page page = new Page(tableName + (target.pages.size()));
+        if (target.pagesPath.size()==0) {
+            Page page = new Page(tableName + "0");
             checkDataTypes(tableName, colNameValue);
             page.list.add(colNameValue);
+            page.clusterings.add(colNameValue.get(target.clusteringKey).toString());
             serializePage(page);
-            target.pages.add(page);
-            target.pages.get(0).clusterings.add(colNameValue.get(target.clusteringKey).toString());
+            //"src/main/resources/data/"+pageName+".bin"
+            target.pagesPath.add("src/main/resources/data/"+page.PageID+".bin");
             target.min.add(colNameValue.get(target.clusteringKey).toString());
             target.max.add(colNameValue.get(target.clusteringKey).toString());
         }
@@ -128,9 +162,9 @@ public class DBApp implements DBAppInterface{
             //finding the target page
             int pageIndex = 0;
             int k;
-            for( k=0;k<target.pages.size();k++){
+            for( k=0;k<target.pagesPath.size();k++){
                 if(currentClustering.compareTo(target.min.get(k))==-1){
-                    String currentPath = "src/main/resources"+"/"+target.tableName+k+".bin";
+                    String currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                     Page currentPage=deserialize(currentPath);
 
                     if (currentPage.list.size()<maxRows){
@@ -138,13 +172,13 @@ public class DBApp implements DBAppInterface{
                         break;
                     }
                     else {
+                        String nextPath = "src/main/resources/data"+"/"+target.tableName+(k+1)+".bin";
+                        Page nextPage =deserialize(nextPath);
                         // shifting one row down and inserting in current page
-                        if (!(target.pages.size()-1==k)&& target.pages.get(k+1).list.size()<maxRows){
+                        if (!(target.pagesPath.size()-1==k)&& nextPage.list.size()<maxRows){
 
-                            currentPath = "src/main/resources"+"/"+target.tableName+k+".bin";
-                           String nextPath = "src/main/resources"+"/"+target.tableName+(k+1)+".bin";
+                            currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                             currentPage=deserialize(currentPath);
-                           Page nextPage =deserialize(nextPath);
                             Hashtable targetElement = currentPage.list.get( currentPage.list.size()-1);
                            nextPage.list.insertElementAt(targetElement,0);
                             nextPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(),0);
@@ -155,10 +189,10 @@ public class DBApp implements DBAppInterface{
                             break;
                     }else{
                             // in CASE THAT THE CURRENT PAGE IS THE LAST PAGE , THEN WE CREATE NEW PAGE AND SHIFT ONE ROW DOWN
-                            if(target.pages.size()-1==k){
-                        Page newPage = new Page(target.tableName+target.pages.size());
-                        target.pages.add(newPage);
-                         currentPath = "src/main/resources"+"/"+target.tableName+k+".bin";
+                            if(target.pagesPath.size()-1==k){
+                        Page newPage = new Page(target.tableName+target.pagesPath.size());
+                        target.pagesPath.add(newPage.PageID);
+                         currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                              currentPage=deserialize(currentPath);
                             Hashtable targetElement = currentPage.list.get( currentPage.list.size()-1);
                             newPage.list.insertElementAt(targetElement,0);
@@ -171,7 +205,7 @@ public class DBApp implements DBAppInterface{
                             break;
                         }else {
                             // Using overflow pages
-                                 currentPath = "src/main/resources"+"/"+target.tableName+k+".bin";
+                                 currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                                  currentPage=deserialize(currentPath);
                                 if(currentPage.overflowPage==null)
                                 currentPage.overflowPage=new Page(currentPage.PageID+"Over");
@@ -193,17 +227,15 @@ public class DBApp implements DBAppInterface{
                     String currentPath = "src/main/resources"+"/"+target.tableName+k+".bin";
                     Page currentPage=deserialize(currentPath);
 
-                        if (target.pages.get(k).list.size()<maxRows){
+                        if (currentPage.list.size()<maxRows){
                             pageIndex=k;
                         break;}
                         else {
                             // shifting one row down and inserting in current page
-                            if (!(target.pages.size()-1==k)&& target.pages.get(k+1).list.size()<maxRows){
-
-                                 currentPath = "src/main/resources"+"/"+target.tableName+k+".bin";
-                                String nextPath = "src/main/resources"+"/"+target.tableName+(k+1)+".bin";
+                            String nextPath = "src/main/resources/data"+"/"+target.tableName+(k+1)+".bin";
+                            Page nextPage =deserialize(nextPath);
+                            if (!(target.pagesPath.size()-1==k)&& nextPage.list.size()<maxRows){
                                  currentPage=deserialize(currentPath);
-                                Page nextPage =deserialize(nextPath);
                                 Hashtable targetElement = currentPage.list.get( currentPage.list.size()-1);
                                 nextPage.list.insertElementAt(targetElement,0);
                                 nextPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(),0);
@@ -214,10 +246,10 @@ public class DBApp implements DBAppInterface{
                                 break;
                             }else {
                                 // in CASE THAT THE CURRENT PAGE IS THE LAST PAGE , THEN WE CREATE NEW PAGE AND SHIFT ONE ROW DOWN
-                                if (target.pages.size() - 1 == k) {
-                                    Page newPage = new Page(target.tableName + target.pages.size());
-                                    target.pages.add(newPage);
-                                     currentPath = "src/main/resources" + "/" + target.tableName + k + ".bin";
+                                if (target.pagesPath.size() - 1 == k) {
+                                    Page newPage = new Page(target.tableName + target.pagesPath.size());
+                                    target.pagesPath.add(newPage.PageID);
+                                     currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
                                      currentPage = deserialize(currentPath);
                                     Hashtable targetElement = currentPage.list.get(currentPage.list.size() - 1);
                                     newPage.list.insertElementAt(targetElement, 0);
@@ -231,7 +263,7 @@ public class DBApp implements DBAppInterface{
 
                                 } else {
                                     // Using overflow pages
-                                     currentPath = "src/main/resources" + "/" + target.tableName + k + ".bin";
+                                     currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
                                      currentPage = deserialize(currentPath);
                                     if (currentPage.overflowPage == null)
                                         currentPage.overflowPage = new Page(currentPage.PageID + "Over");
@@ -246,10 +278,10 @@ public class DBApp implements DBAppInterface{
 
                     } else {
                     //  HANDLING SOME DELETION CASES WHERE THERE EXIST SOME SPACE IN PREVIOUS PAGE
-                    String currentPath = "src/main/resources"+"/"+target.tableName+k+".bin";
+                    String currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                     Page currentPage=deserialize(currentPath);
 
-                    if (target.pages.size()-1>k){
+                    if (target.pagesPath.size()-1>k){
                        if( target.min.get(k+1).compareTo(colNameValue.get(target.clusteringKey).toString())==1 )
                            if(currentPage.list.size()<maxRows){
                                pageIndex=k;
@@ -265,15 +297,16 @@ public class DBApp implements DBAppInterface{
             }
             }
 
-            if (k==target.pages.size()){
-                Page newPage = new Page(target.tableName + target.pages.size());
+            if (k==target.pagesPath.size()){
+                Page newPage = new Page(target.tableName + target.pagesPath.size());
                 newPage.list.add(colNameValue);
                 newPage.clusterings.add(colNameValue.get(target.clusteringKey).toString());
                 target.min.add(colNameValue.get(target.clusteringKey).toString());
                 target.max.add(colNameValue.get(target.clusteringKey).toString());
                 serializePage(newPage);}
              else{
-                Page currentPage = target.pages.get(pageIndex);
+                 String path = target.pagesPath.get(pageIndex);
+                Page currentPage = deserialize(path);
                 int x =0;
                 int idx = Collections.binarySearch(currentPage.clusterings,colNameValue.get(target.clusteringKey).toString());
                 if(idx>0)
@@ -311,12 +344,14 @@ public class DBApp implements DBAppInterface{
             Boolean flag = false;
 
             Table table = null;
+            Vector<String> tableList= (Vector<String>) deserializeVector("src/main/resources/data/tablesList.bin");
             for (i = 0; i < tableList.size(); i++) {
-                table = DeserializeTable("src/main/resources/Tables" + (i + 1) + ".bin");
+                table = DeserializeTable("src/main/resources/data/"+tableName+".bin");
                 if (table.tableName.equals(tableName)) {
                     flag = true;
                     break;
                 }
+
 
             }
             if (flag) {
@@ -327,7 +362,7 @@ public class DBApp implements DBAppInterface{
                 for (j = 0; j < table.min.size(); j++) {
                     if (clusteringKeyValue.compareTo((table.min.get(j)).toString()) >= 0 &&
                             clusteringKeyValue.compareTo((table.max.get(j)).toString()) <= 0) {
-                        page = deserialize("src/main/resources" + "/" + table.tableName + (j + 1) + ".bin");
+                        page = deserialize("src/main/resources/data" + "/" + table.tableName + (j + 1) + ".bin");
                         //idx = Collections.binarySearch(page.clusterings,clusteringKeyValue);
                         String s = (String) (columnNameValue.keySet().toArray())[0];
                         columnNameValue.replace(s, columnNameValue.get(s));
@@ -345,7 +380,7 @@ public class DBApp implements DBAppInterface{
                 throw new DBAppException("The table does not exist");
             }
             serializeTable(table);
-        }catch (DBAppException e){
+        }catch (Exception e){
             System.out.println(e.getMessage());
         }
 
@@ -353,10 +388,15 @@ public class DBApp implements DBAppInterface{
 
     @Override
     public void deleteFromTable(String tableName, Hashtable<String, Object> columnNameValue) throws DBAppException {
-        Page p = getPage(tableName,columnNameValue);
-        int rowIdx = getRow(p, columnNameValue, tableName);
-        p.list.removeElementAt(rowIdx);
-
+        Page p = getPage(tableName, columnNameValue);
+        if (p != null) {
+            try {
+                int rowIdx = getRow(p, columnNameValue, tableName);
+                p.list.removeElementAt(rowIdx);
+            } catch (Exception x) {
+                System.out.println(x.getMessage());
+            }
+        }
     }
 
     @Override
@@ -398,8 +438,8 @@ public class DBApp implements DBAppInterface{
 
         //  #####   parsing a CSV file into vector of String[]  #####
 
-        Object min;
-        Object max;
+        String min;
+        String max;
         Vector<String[]> Data =new Vector<String[]>();
         String line = "";
         String splitBy = ",";
@@ -422,14 +462,27 @@ public class DBApp implements DBAppInterface{
             for(int j =0 ;j<Data.size();j++){
                 if(Data.get(j)[0].equals(tableName)) {
                     min = Data.get(j)[Data.get(j).length - 2];
+
                     String colName = Data.get(j)[1];
                     if (colNameValue.get(colName) != null) {
-                        if (colNameValue.get(colName).toString().compareTo(min.toString()) == -1) {
-                            throw new DBAppException("you entered value below minimum");
+                        if(colNameValue.get(colName) instanceof  Date){
+                            Date d = (Date)colNameValue.get(colName);
+                            DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+                            String strDate = dateFormat.format(d);
+                            if (strDate.compareTo(min) == -1)
+                                throw new DBAppException("you entered date below minimum");
+                            max = Data.get(j)[Data.get(j).length - 1];
+                            if (strDate.compareTo(max) == 1)
+                                throw new DBAppException("you entered date above maximum");
                         }
-                        max = Data.get(j)[Data.get(j).length - 1];
-                        if (colNameValue.get(colName).toString().compareTo(max.toString()) == 1) {
-                            throw new DBAppException("you entered value above maximum");
+                        else {
+                            if (colNameValue.get(colName).toString().compareTo(min) == -1) {
+                                throw new DBAppException("you entered value below minimum");
+                            }
+                            max = Data.get(j)[Data.get(j).length - 1];
+                            if (colNameValue.get(colName).toString().compareTo(max) == 1) {
+                                throw new DBAppException("you entered value above maximum");
+                            }
                         }
                     }
                 }
@@ -486,7 +539,7 @@ public static void serializePage(Page p){
     try
     {
         //Saving of object in a file
-        FileOutputStream file = new FileOutputStream("src/main/resources/"+pageName+".bin");
+        FileOutputStream file = new FileOutputStream("src/main/resources/data/"+pageName+".bin");
         ObjectOutputStream out = new ObjectOutputStream(file);
 
         // Method for serialization of object
@@ -541,7 +594,7 @@ public int readConfig(String key) throws IOException {
         try
         {
             //Saving of object in a file
-            FileOutputStream file = new FileOutputStream("src/main/resources/"+tableName+".bin");
+            FileOutputStream file = new FileOutputStream("src/main/resources/data/"+tableName+".bin");
             ObjectOutputStream out = new ObjectOutputStream(file);
 
             // Method for serialization of object
@@ -549,8 +602,7 @@ public int readConfig(String key) throws IOException {
 
             out.close();
             file.close();
-
-            System.out.println("Object has been serialized");
+           System.out.println("Object has been serialized");
 
         }
 
@@ -560,7 +612,7 @@ public int readConfig(String key) throws IOException {
         }
 
     }
-    public static Table deserializeTable(String tableName){
+    /*public static Table deserializeTable(String tableName){
         Table table = null;
         String filePath = "src/main/resources/"+tableName+".bin";
         try {
@@ -579,36 +631,40 @@ public int readConfig(String key) throws IOException {
             System.out.println("ClassNotFoundException is caught");
         }
         return table;
-    }
+    }*/
     public Page getPage(String tableName , Hashtable<String,Object> colNameValue) throws DBAppException {
         Page p = null;
         //table doesnt exist
-        if(!this.tableNames.contains(tableName))
+        Vector<String> tableNames = deserializeVector("src/main/resources/data/tableNames.bin");
+        if(!tableNames.contains(tableName))
             throw new DBAppException("table doesn't exist!");
         else {
-            Table t = (Table) deserializeTable(tableName);
+            serializetableNames(tableNames);
+             String filePath = "src/main/resources/data/"+tableName+".bin";
+            Table t = (Table) DeserializeTable(filePath);
             String clustering = t.clusteringKey;
             //I have the primary key and can search with it
             if(colNameValue.get(clustering)!=null){
                 int x =   Collections.binarySearch(t.min,colNameValue.get(clustering).toString());
                 //the pk is the min at that page
                 if(x>0){
-                    deserialize("src/main/resources/"+tableName+x+".bin");
-                    p = t.pages.get(x);
+
+
+                    p = deserialize("src/main/resources/data/"+tableName+x+".bin");
                 }
                 else{
                     int c = x-1;
-                    deserialize("src/main/resources/"+tableName+c+".bin");
 
-                    p=t.pages.get(x-1);
+                    p=deserialize("src/main/resources/data/"+tableName+c+".bin");
+
                 }
             }
             else{
                 //looping over all table pages
-                for(int i =0 ; i<t.pages.size();i++){
+                for(int i =0 ; i<t.pagesPath.size();i++){
                     String pageID =t.tableName+i;
-                    String filePath = "src/main/resources/"+pageID+".bin";
-                    p = deserialize(filePath);
+                    String filePath1 = "src/main/resources/data/"+pageID+".bin";
+                    p = deserialize(filePath1);
                     //looping over each page
                     for(int j =0;j<p.list.size();j++){
                         String currRow = p.list.get(j).toString();
@@ -690,9 +746,10 @@ public int readConfig(String key) throws IOException {
     public  void serializeTableFunction(Table t){
         try
         {
+            Vector<String> tableList = deserializeVectorS("src/main/resources/data/tablesList.bin");
             int vectorSize=tableList.size();
             //Saving of object in a file
-            FileOutputStream file = new FileOutputStream("src/main/resources/"+t.tableName+vectorSize+".bin");
+            FileOutputStream file = new FileOutputStream("src/main/resources/data/"+t.tableName+vectorSize+".bin");
             ObjectOutputStream out = new ObjectOutputStream(file);
 
             // Method for serialization of object
@@ -713,13 +770,99 @@ public int readConfig(String key) throws IOException {
 
 
     }
+    public static void serializetableList(Vector<String> v ){
+        try
+        {
+            int vectorSize=v.size();
+            //Saving of object in a file
+            FileOutputStream file = new FileOutputStream("src/main/resources/data/tablesList.bin");
+            ObjectOutputStream out = new ObjectOutputStream(file);
+
+            // Method for serialization of object
+            out.writeObject(v);
+
+            out.close();
+            file.close();
+
+            System.out.println("Object has been serialized");
+
+        }
+
+        catch(IOException ex)
+        {
+            System.out.println("IOException is caught");
+        }
+
+    }
+
+    public static Vector<String> deserializeVector(String filePath){
+        Vector<String> v = new Vector<>();
+        try {
+            // Reading the object from a file
+            FileInputStream file = new FileInputStream(filePath);
+            ObjectInputStream in = new ObjectInputStream(file);
+            // Method for deserialization of object
+            v = (Vector<String>) in.readObject();
+            in.close();
+            file.close();
+
+            System.out.println("Object has been deserialized ");
+        } catch (IOException ex) {
+            System.out.println("IOException is caught");
+        } catch (ClassNotFoundException ex) {
+            System.out.println("ClassNotFoundException is caught");
+        }
+        return v;
 
 
+    }
+    public static void serializetableNames(Vector<String> v ){
+        try
+        {
+            int vectorSize=v.size();
+            //Saving of object in a file
+            FileOutputStream file = new FileOutputStream("src/main/resources/data/tableNames.bin");
+            ObjectOutputStream out = new ObjectOutputStream(file);
+
+            // Method for serialization of object
+            out.writeObject(v);
+
+            out.close();
+            file.close();
+
+            System.out.println("Object has been serialized");
+
+        }
+
+        catch(IOException ex)
+        {
+            System.out.println("IOException is caught");
+        }
+
+    }
+    public static Vector<String> deserializeVectorS(String filePath){
+        Vector<String> v = new Vector<>();
+        try {
+            // Reading the object from a file
+            FileInputStream file = new FileInputStream(filePath);
+            ObjectInputStream in = new ObjectInputStream(file);
+            // Method for deserialization of object
+            v = (Vector<String>) in.readObject();
+            in.close();
+            file.close();
+
+            System.out.println("Object has been deserialized ");
+        } catch (IOException ex) {
+            System.out.println("IOException is caught");
+        } catch (ClassNotFoundException ex) {
+            System.out.println("ClassNotFoundException is caught");
+        }
+        return v;
 
 
-
-    public static void main (String[] args) throws DBAppException, IOException {
-       Hashtable table = new Hashtable<String,String>();
+    }
+    public static void main (String[] args) throws DBAppException, IOException, ParseException {
+       /*Hashtable table = new Hashtable<String,String>();
 
      table.put("Pen", "soso");
      table.put("Book", "lolo");
@@ -745,6 +888,7 @@ public int readConfig(String key) throws IOException {
 
      DBApp db =new DBApp();
    db.init();
+
      db.createTable("marvelous","Pen",table,table1,table2);
 
 
@@ -754,4 +898,13 @@ public int readConfig(String key) throws IOException {
     cw.write("lolo");
      //close the file
      cw.close();*/
+        Date x = new Date(2000,4,5);
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+        String xx = dateFormat.format(x);
+        Date d = new Date(1900,2,10);
+        String stringdate = "2000-11-21";
+        //Date mydate = new Date(stringdate);
+        Date date1=new SimpleDateFormat("yyyy-MM-dd").parse(stringdate);
+        String dd =dateFormat.format(d);
+        System.out.println(date1.compareTo(d));
 }}
