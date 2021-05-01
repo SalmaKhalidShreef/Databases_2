@@ -105,6 +105,7 @@ public class DBApp implements DBAppInterface {
 
     @Override
     public void insertIntoTable(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
+        colNotFound(tableName,colNameValue);
         Vector<String> tables = null;
         int maxRows = 0;
         try {
@@ -336,6 +337,7 @@ public class DBApp implements DBAppInterface {
 
     @Override
     public void updateTable(String tableName, String clusteringKeyValue, Hashtable<String, Object> columnNameValue) throws DBAppException {
+       colNotFound(tableName,columnNameValue);
         try {
             checkDataTypes(tableName,columnNameValue);
             int i;
@@ -388,6 +390,7 @@ public class DBApp implements DBAppInterface {
 
     @Override
     public void deleteFromTable(String tableName, Hashtable<String, Object> columnNameValue) throws DBAppException {
+       // colNotFound(tableName,columnNameValue);
         Page p = getPage(tableName, columnNameValue);
         if (p != null) {
             try {
@@ -459,12 +462,15 @@ public class DBApp implements DBAppInterface {
         {
             e.printStackTrace();
         }
+        boolean tableFound = false;
+        boolean colFound = false;
             for(int j =0 ;j<Data.size();j++){
                 if(Data.get(j)[0].equals(tableName)) {
                     min = Data.get(j)[Data.get(j).length - 2];
-
+                    tableFound=true;
                     String colName = Data.get(j)[1];
                     if (colNameValue.get(colName) != null) {
+                        colFound= true;
                         if(colNameValue.get(colName) instanceof  Date){
                             Date d = (Date)colNameValue.get(colName);
                             DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
@@ -491,6 +497,7 @@ public class DBApp implements DBAppInterface {
         //  ######   looping over table attributes   #######
         String columnName="";
         Set<String> columns  = colNameValue.keySet();
+
         for(String k : columns){
             columnName = k;
             String dataType =getType(colNameValue.get(k));
@@ -860,6 +867,37 @@ public int readConfig(String key) throws IOException {
         return v;
 
 
+    }
+    public void colNotFound (String tableName , Hashtable<String,Object> colNameValue) throws DBAppException {
+        Vector<String[]> Data =new Vector<String[]>();
+        String line = "";
+        String splitBy = ",";
+        try
+        {
+
+            BufferedReader br = new BufferedReader(new FileReader("src/main/resources/metadata.csv"));
+            while ((line = br.readLine()) != null)   //returns a Boolean value
+            {
+                String[] array= line.split(splitBy);
+                Data.add(array);
+
+            }
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        HashSet<String> colNames = new HashSet<>();
+        for(int i =0 ; i<Data.size();i++){
+            if(Data.get(i)[0].equals(tableName)){
+                colNames.add(Data.get(i)[1]);
+            }
+        }
+        Set hash_set = colNameValue.keySet();
+
+       if(!colNames.containsAll(hash_set)){
+           throw new DBAppException("Columns entered not found in the table!");
+       }
     }
     public static void main (String[] args) throws DBAppException, IOException, ParseException {
        /*Hashtable table = new Hashtable<String,String>();
