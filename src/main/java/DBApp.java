@@ -18,10 +18,21 @@ public class DBApp implements DBAppInterface {
         tableNames = new Vector<String>();
 
     }
+    private static final String FOLDER ="src/main/resources/data";
 
     @Override
     public void init() {
         FileWriter csvWriter = null;
+        //File data = new File("src/main/resources");
+        File newFolder = new File(FOLDER);
+
+        boolean created =  newFolder.mkdir();
+
+        if(created)
+            System.out.println("Folder was created !");
+        else
+            System.out.println("Unable to create folder");
+
         String title = "Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max";
         try {
             csvWriter = new FileWriter("src/main/resources/metadata.csv", true);
@@ -150,7 +161,12 @@ public class DBApp implements DBAppInterface {
         //table has no pages case
         if (target.pagesPath.size()==0) {
             Page page = new Page(tableName + "0");
-            checkDataTypes(tableName, colNameValue);
+            try {
+                checkDataTypes(tableName, colNameValue);
+            }
+            catch (Exception ex){
+                System.out.println(ex.getMessage());
+            }
             page.list.add(colNameValue);
             page.clusterings.add(colNameValue.get(target.clusteringKey).toString());
             serializePage(page);
@@ -337,7 +353,8 @@ public class DBApp implements DBAppInterface {
 
     @Override
     public void updateTable(String tableName, String clusteringKeyValue, Hashtable<String, Object> columnNameValue) throws DBAppException {
-       colNotFound(tableName,columnNameValue);
+
+        colNotFound(tableName,columnNameValue);
         try {
             checkDataTypes(tableName,columnNameValue);
             int i;
@@ -350,6 +367,8 @@ public class DBApp implements DBAppInterface {
             for (i = 0; i < tableList.size(); i++) {
                 table = DeserializeTable("src/main/resources/data/"+tableName+".bin");
                 if (table.tableName.equals(tableName)) {
+                    if(columnNameValue.get(table.clusteringKey)!=null)
+                        throw  new DBAppException("You can't update clustering key !");
                     flag = true;
                     break;
                 }
@@ -437,7 +456,7 @@ public class DBApp implements DBAppInterface {
 
     }
 
-    public static void checkDataTypes (String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
+    public static void checkDataTypes (String tableName, Hashtable<String, Object> colNameValue) throws DBAppException, ParseException {
 
         //  #####   parsing a CSV file into vector of String[]  #####
 
@@ -475,10 +494,15 @@ public class DBApp implements DBAppInterface {
                             Date d = (Date)colNameValue.get(colName);
                             DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
                             String strDate = dateFormat.format(d);
-                            if (strDate.compareTo(min) == -1)
+                            Date date1=new SimpleDateFormat("yyyy-mm-dd").parse(min);
+                            Date date2 = new SimpleDateFormat("yyyy-mm-dd").parse(strDate);
+                            //System.out.println(date1);
+                            //System.out.println(date2);
+                            if (date2.compareTo(date1) == -1)
                                 throw new DBAppException("you entered date below minimum");
                             max = Data.get(j)[Data.get(j).length - 1];
-                            if (strDate.compareTo(max) == 1)
+                            Date datemax=new SimpleDateFormat("yyyy-mm-dd").parse(max);
+                            if (date2.compareTo(datemax) == 1)
                                 throw new DBAppException("you entered date above maximum");
                         }
                         else {
