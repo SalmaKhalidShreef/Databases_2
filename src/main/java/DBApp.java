@@ -129,32 +129,20 @@ public class DBApp implements DBAppInterface {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        /*try {
-            // Reading the object from a file
-            FileInputStream file = new FileInputStream("src/main/resources/Tables.bin");
-            ObjectInputStream in = new ObjectInputStream(file);
-            // Method for deserialization of object
-            tables = (Vector<Table>) in.readObject();
 
-            in.close();
-            file.close();
-
-            System.out.println("Object has been deserialized ");
-        } catch (IOException ex) {
-            System.out.println("IOException is caught");
-        } catch (ClassNotFoundException ex) {
-            System.out.println("ClassNotFoundException is caught");
-        }*/
         Table target = null;
         tables = deserializeVector("src/main/resources/data/tablesList.bin");
         tableNames = deserializeVectorS("src/main/resources/data/tableNames.bin");
-        System.out.println(tables.size());
-        System.out.println(tableNames.size());
+      //  System.out.println(tables.size());
+       // System.out.println(tableNames.size());
+
+        String tableFilePath="";
+
         for (int i = 0; i < tables.size(); i++) {
             if (tableNames.get(i).compareTo(tableName)==0) {
-                String filePath =tables.get(i);
-                System.out.println(filePath);
-                target = DeserializeTable(filePath);
+                tableFilePath =tables.get(i);
+           //     System.out.println(tableFilePath);
+                target = DeserializeTable(tableFilePath);
                 break;
             }
 
@@ -163,6 +151,7 @@ public class DBApp implements DBAppInterface {
             throw new DBAppException("Table not found");
         String currentClustering =colNameValue.get(target.clusteringKey).toString();
         //table has no pages case
+        System.out.println("number of pages is     "+target.pagesPath.size());
         if (target.pagesPath.size()==0) {
             Page page = new Page(tableName + "0");
             try {
@@ -178,6 +167,7 @@ public class DBApp implements DBAppInterface {
             target.pagesPath.add("src/main/resources/data/"+page.PageID+".bin");
             target.min.add(colNameValue.get(target.clusteringKey).toString());
             target.max.add(colNameValue.get(target.clusteringKey).toString());
+            serializeTable(target);
         }
         else{
             //finding the target page
@@ -194,6 +184,7 @@ public class DBApp implements DBAppInterface {
                         break;
                     }
                     else {
+                        // check for existance of next page should be added  $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
                         String nextPath = "src/main/resources/data"+"/"+target.tableName+(k+1)+".bin";
                         Page nextPage =deserialize(nextPath);
                         if(nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
@@ -268,7 +259,7 @@ public class DBApp implements DBAppInterface {
                     // REPEATING A SIMILAR CODE FOR DIFFERENT CASE
 
                 if (currentClustering.compareTo(target.min.get(k))==1 && currentClustering.compareTo(target.max.get(k))==-1 ){
-                    String currentPath = "src/main/resources"+"/"+target.tableName+k+".bin";
+                    String currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                     Page currentPage=deserialize(currentPath);
                     if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
                         throw new DBAppException("there is an entry with this primary Key !");
@@ -349,6 +340,7 @@ public class DBApp implements DBAppInterface {
             }
             }
 
+                System.out.println("page index is        "+ pageIndex);
             if (k==target.pagesPath.size()){
                 Page newPage = new Page(target.tableName + target.pagesPath.size());
                 newPage.list.add(colNameValue);
@@ -370,13 +362,16 @@ public class DBApp implements DBAppInterface {
 
                     currentPage.list.insertElementAt(colNameValue,x);
                     //inserting the clustering key at the clusterings vector
-                    currentPage.clusterings.insertElementAt((String) colNameValue.get(target.clusteringKey.toString()),x);
+                    currentPage.clusterings.insertElementAt((String) colNameValue.get(target.clusteringKey.toString()).toString(),x);
 
                     if(currentClustering.compareTo((String) target.min.get(0))==-1){
                         target.min.set(0,currentClustering);
                     }
                     if(currentClustering.compareTo(target.max.get(0))==1)
                         target.max.set(0,currentClustering);
+                    serializePage(currentPage);
+                    serializeTable(target);
+
                 }
                 }
 
@@ -629,7 +624,7 @@ public static void serializePage(Page p){
         out.close();
         file.close();
 
-        System.out.println("Object has been serialized");
+     //   System.out.println("Object has been serialized");
 
     }
 
@@ -652,7 +647,7 @@ public static Page deserialize(String filePath){
                 in.close();
                 file.close();
 
-                System.out.println("Object has been deserialized ");
+          //      System.out.println("Object has been deserialized ");
             } catch (IOException ex) {
                 System.out.println("IOException is caught");
             } catch (ClassNotFoundException ex) {
@@ -683,7 +678,7 @@ public int readConfig(String key) throws IOException {
 
             out.close();
             file.close();
-           System.out.println("Object has been serialized");
+        //   System.out.println("Object has been serialized");
 
         }
 
@@ -814,7 +809,7 @@ public int readConfig(String key) throws IOException {
             in.close();
             file.close();
 
-            System.out.println("Object has been deserialized ");
+          //  System.out.println("Object has been deserialized ");
         } catch (IOException ex) {
             System.out.println("IOException is caught");
         } catch (ClassNotFoundException ex) {
@@ -839,7 +834,7 @@ public int readConfig(String key) throws IOException {
             out.close();
             file.close();
 
-            System.out.println("Object has been serialized");
+        //    System.out.println("Object has been serialized");
 
         }
 
@@ -865,7 +860,7 @@ public int readConfig(String key) throws IOException {
             out.close();
             file.close();
 
-            System.out.println("Object has been serialized");
+         //   System.out.println("Object has been serialized");
 
         }
 
@@ -887,7 +882,7 @@ public int readConfig(String key) throws IOException {
             in.close();
             file.close();
 
-            System.out.println("Object has been deserialized ");
+        //    System.out.println("Object has been deserialized ");
         } catch (IOException ex) {
             System.out.println("IOException is caught");
         } catch (ClassNotFoundException ex) {
@@ -911,7 +906,7 @@ public int readConfig(String key) throws IOException {
             out.close();
             file.close();
 
-            System.out.println("Object has been serialized");
+          //  System.out.println("Object has been serialized");
 
         }
 
@@ -932,7 +927,7 @@ public int readConfig(String key) throws IOException {
             in.close();
             file.close();
 
-            System.out.println("Object has been deserialized ");
+       //     System.out.println("Object has been deserialized ");
         } catch (IOException ex) {
             System.out.println("IOException is caught");
         } catch (ClassNotFoundException ex) {
