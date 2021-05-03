@@ -90,9 +90,14 @@ public class DBApp implements DBAppInterface {
             csvWriter.flush();
             csvWriter.close();
             Table table = new Table(tableName, clusteringKey);
-            this.tableList.add(table.tableName);
+            Vector <String> tableNames = deserializeVector("src/main/resources/data/tableNames.bin");
+            if(tableNames.contains(tableName))
+                throw new DBAppException("A table with this name already exists");
+            Vector <String> tableList = deserializeVector("src/main/resources/data/tablesList.bin");
+            tableList.add("src/main/resources/data/"+tableName+".bin");
             serializetableList(tableList);
-            this.tableNames.add(tableName);
+
+            tableNames.add(tableName);
             serializetableNames(tableNames);
             serializeTable(table);
 
@@ -147,7 +152,7 @@ public class DBApp implements DBAppInterface {
         System.out.println(tableNames.size());
         for (int i = 0; i < tables.size(); i++) {
             if (tableNames.get(i).compareTo(tableName)==0) {
-                String filePath ="src/main/resources/data/"+tableName+".bin";
+                String filePath =tables.get(i);
                 System.out.println(filePath);
                 target = DeserializeTable(filePath);
                 break;
@@ -157,7 +162,6 @@ public class DBApp implements DBAppInterface {
         if (target == null)
             throw new DBAppException("Table not found");
         String currentClustering =colNameValue.get(target.clusteringKey).toString();
-
         //table has no pages case
         if (target.pagesPath.size()==0) {
             Page page = new Page(tableName + "0");
@@ -183,7 +187,8 @@ public class DBApp implements DBAppInterface {
                 if(currentClustering.compareTo(target.min.get(k))==-1){
                     String currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                     Page currentPage=deserialize(currentPath);
-
+                    if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                        throw new DBAppException("there is an entry with this primary Key !");
                     if (currentPage.list.size()<maxRows){
                         pageIndex=k;
                         break;
@@ -191,12 +196,18 @@ public class DBApp implements DBAppInterface {
                     else {
                         String nextPath = "src/main/resources/data"+"/"+target.tableName+(k+1)+".bin";
                         Page nextPage =deserialize(nextPath);
+                        if(nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                            throw new DBAppException("there is an entry with this primary Key !");
                         // shifting one row down and inserting in current page
                         if (!(target.pagesPath.size()-1==k)&& nextPage.list.size()<maxRows){
 
                             currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                             currentPage=deserialize(currentPath);
+                            if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                throw new DBAppException("there is an entry with this primary Key !");
                             Hashtable targetElement = currentPage.list.get( currentPage.list.size()-1);
+                            if(nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                throw new DBAppException("there is an entry with this primary Key !");
                            nextPage.list.insertElementAt(targetElement,0);
                             nextPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(),0);
                             target.min.set(k+1,targetElement.get(target.clusteringKey).toString());
@@ -211,6 +222,8 @@ public class DBApp implements DBAppInterface {
                         target.pagesPath.add(newPage.PageID);
                          currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                              currentPage=deserialize(currentPath);
+                                if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                    throw new DBAppException("there is an entry with this primary Key !");
                             Hashtable targetElement = currentPage.list.get( currentPage.list.size()-1);
                             newPage.list.insertElementAt(targetElement,0);
                             newPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(),0);
@@ -224,10 +237,24 @@ public class DBApp implements DBAppInterface {
                             // Using overflow pages
                                  currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                                  currentPage=deserialize(currentPath);
+                                if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                    throw new DBAppException("there is an entry with this primary Key !");
                                 if(currentPage.overflowPage==null)
                                 currentPage.overflowPage=new Page(currentPage.PageID+"Over");
-                                currentPage.overflowPage.list.add(colNameValue);
-                                currentPage.overflowPage.clusterings.add(colNameValue.get(target.clusteringKey).toString());
+                                /////////////////////////////////////////////////////////////
+                                int x =0;
+                                int idx = Collections.binarySearch(currentPage.overflowPage.clusterings, colNameValue.get(target.clusteringKey).toString());
+                                if(idx>0)
+                                    throw new DBAppException("you entered a primary key that already exists");
+                                else {
+                                    x = -1 - idx;
+
+                                    currentPage.overflowPage.list.insertElementAt(colNameValue, x);
+                                    //inserting the clustering key at the clusterings vector
+                                    currentPage.overflowPage.clusterings.insertElementAt((String) colNameValue.get(target.clusteringKey.toString()), x);
+
+                                }
+                                /////////////////////////////////////////////////////////////////
                                 serializePage(currentPage.overflowPage);
                                 serializePage(currentPage);
                                 return;
@@ -243,7 +270,8 @@ public class DBApp implements DBAppInterface {
                 if (currentClustering.compareTo(target.min.get(k))==1 && currentClustering.compareTo(target.max.get(k))==-1 ){
                     String currentPath = "src/main/resources"+"/"+target.tableName+k+".bin";
                     Page currentPage=deserialize(currentPath);
-
+                    if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                        throw new DBAppException("there is an entry with this primary Key !");
                         if (currentPage.list.size()<maxRows){
                             pageIndex=k;
                         break;}
@@ -251,11 +279,15 @@ public class DBApp implements DBAppInterface {
                             // shifting one row down and inserting in current page
                             String nextPath = "src/main/resources/data"+"/"+target.tableName+(k+1)+".bin";
                             Page nextPage =deserialize(nextPath);
+                            if(nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                throw new DBAppException("there is an entry with this primary Key !");
                             if (!(target.pagesPath.size()-1==k)&& nextPage.list.size()<maxRows){
                                  currentPage=deserialize(currentPath);
                                 Hashtable targetElement = currentPage.list.get( currentPage.list.size()-1);
                                 nextPage.list.insertElementAt(targetElement,0);
                                 nextPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(),0);
+                                if(nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                    throw new DBAppException("there is an entry with this primary Key !");
                                 target.min.set(k+1,targetElement.get(target.clusteringKey).toString());
                                 currentPage.list.remove(maxRows);
                                 pageIndex=k;
@@ -282,6 +314,8 @@ public class DBApp implements DBAppInterface {
                                     // Using overflow pages
                                      currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
                                      currentPage = deserialize(currentPath);
+                                    if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                        throw new DBAppException("there is an entry with this primary Key !");
                                     if (currentPage.overflowPage == null)
                                         currentPage.overflowPage = new Page(currentPage.PageID + "Over");
                                     currentPage.overflowPage.list.add(colNameValue);
@@ -297,7 +331,8 @@ public class DBApp implements DBAppInterface {
                     //  HANDLING SOME DELETION CASES WHERE THERE EXIST SOME SPACE IN PREVIOUS PAGE
                     String currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                     Page currentPage=deserialize(currentPath);
-
+                    if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                        throw new DBAppException("there is an entry with this primary Key !");
                     if (target.pagesPath.size()-1>k){
                        if( target.min.get(k+1).compareTo(colNameValue.get(target.clusteringKey).toString())==1 )
                            if(currentPage.list.size()<maxRows){
@@ -324,6 +359,8 @@ public class DBApp implements DBAppInterface {
              else{
                  String path = target.pagesPath.get(pageIndex);
                 Page currentPage = deserialize(path);
+                if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                    throw new DBAppException("there is an entry with this primary Key !");
                 int x =0;
                 int idx = Collections.binarySearch(currentPage.clusterings,colNameValue.get(target.clusteringKey).toString());
                 if(idx>0)
@@ -385,9 +422,22 @@ public class DBApp implements DBAppInterface {
                             clusteringKeyValue.compareTo((table.max.get(j)).toString()) <= 0) {
                         page = deserialize("src/main/resources/data" + "/" + table.tableName + (j + 1) + ".bin");
                         //idx = Collections.binarySearch(page.clusterings,clusteringKeyValue);
-                        String s = (String) (columnNameValue.keySet().toArray())[0];
-                        columnNameValue.replace(s, columnNameValue.get(s));
-                        flagfoundpage = true;
+                        if(!page.clusterings.contains(clusteringKeyValue)){
+                            if(page.overflowPage!=null){
+                                Page overflow = deserialize("src/main/resources/data" + "/" + table.tableName + (j + 1) +"Over"+ ".bin");
+                                if(overflow.clusterings.contains(clusteringKeyValue)){
+                                    String s = (String) (columnNameValue.keySet().toArray())[0];
+                                    columnNameValue.replace(s, columnNameValue.get(s));
+                                    flagfoundpage = true;
+                                    break;
+                                }
+                            }
+                        }
+                        else if(page.clusterings.contains(clusteringKeyValue)) {
+                            String s = (String) (columnNameValue.keySet().toArray())[0];
+                            columnNameValue.replace(s, columnNameValue.get(s));
+                            flagfoundpage = true;
+                        }
 
                         serializePage(page);
                         break;
