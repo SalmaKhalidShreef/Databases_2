@@ -174,7 +174,7 @@ public class DBApp implements DBAppInterface {
             int pageIndex = 0;
             int k;
             for( k=0;k<target.pagesPath.size();k++){
-                if(currentClustering.compareTo(target.min.get(k))==-1){
+                if(currentClustering.compareTo(target.min.get(k))<0){
                     String currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                     Page currentPage=deserialize(currentPath);
                     if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
@@ -202,7 +202,7 @@ public class DBApp implements DBAppInterface {
                            nextPage.list.insertElementAt(targetElement,0);
                             nextPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(),0);
                             target.min.set(k+1,targetElement.get(target.clusteringKey).toString());
-                            currentPage.list.remove(maxRows);
+                            currentPage.list.remove(maxRows-1);
                             pageIndex=k;
                             serializePage(nextPage);
                             break;
@@ -220,7 +220,7 @@ public class DBApp implements DBAppInterface {
                             newPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(),0);
                             target.min.add(targetElement.get(target.clusteringKey).toString());
                             target.max.add(targetElement.get(target.clusteringKey).toString());
-                            currentPage.list.remove(maxRows);
+                            currentPage.list.remove(maxRows-1);
                             pageIndex=k;
                             serializePage(newPage);
                             break;
@@ -258,7 +258,7 @@ public class DBApp implements DBAppInterface {
                 } else {
                     // REPEATING A SIMILAR CODE FOR DIFFERENT CASE
 
-                if (currentClustering.compareTo(target.min.get(k))==1 && currentClustering.compareTo(target.max.get(k))==-1 ){
+                if (currentClustering.compareTo(target.min.get(k))>0 && currentClustering.compareTo(target.max.get(k))<0 ){
                     String currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                     Page currentPage=deserialize(currentPath);
                     if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
@@ -280,7 +280,7 @@ public class DBApp implements DBAppInterface {
                                 if(nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
                                     throw new DBAppException("there is an entry with this primary Key !");
                                 target.min.set(k+1,targetElement.get(target.clusteringKey).toString());
-                                currentPage.list.remove(maxRows);
+                                currentPage.list.remove(maxRows-1);
                                 pageIndex=k;
                                 serializePage(nextPage);
                                 break;
@@ -296,7 +296,7 @@ public class DBApp implements DBAppInterface {
                                     newPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(), 0);
                                     target.min.add(targetElement.get(target.clusteringKey).toString());
                                     target.max.add(targetElement.get(target.clusteringKey).toString());
-                                    currentPage.list.remove(maxRows);
+                                    currentPage.list.remove(maxRows-1);
                                     pageIndex = k;
                                     serializePage(newPage);
                                     break;
@@ -341,7 +341,9 @@ public class DBApp implements DBAppInterface {
             }
 
                 System.out.println("page index is        "+ pageIndex);
+                System.out.println("k is  " + k);
             if (k==target.pagesPath.size()){
+                System.out.println("lolo");
                 Page newPage = new Page(target.tableName + target.pagesPath.size());
                 newPage.list.add(colNameValue);
                 newPage.clusterings.add(colNameValue.get(target.clusteringKey).toString());
@@ -364,10 +366,10 @@ public class DBApp implements DBAppInterface {
                     //inserting the clustering key at the clusterings vector
                     currentPage.clusterings.insertElementAt((String) colNameValue.get(target.clusteringKey.toString()).toString(),x);
 
-                    if(currentClustering.compareTo((String) target.min.get(0))==-1){
+                    if(currentClustering.compareTo((String) target.min.get(0))<0){
                         target.min.set(0,currentClustering);
                     }
-                    if(currentClustering.compareTo(target.max.get(0))==1)
+                    if(currentClustering.compareTo(target.max.get(0))>0)
                         target.max.set(0,currentClustering);
                     serializePage(currentPage);
                     serializeTable(target);
