@@ -150,6 +150,9 @@ public class DBApp implements DBAppInterface {
         if (target == null)
             throw new DBAppException("Table not found");
         String currentClustering =colNameValue.get(target.clusteringKey).toString();
+        if(currentClustering==null){
+            throw new DBAppException("you entered an entry with no primary key");
+        }
         //table has no pages case
         System.out.println("number of pages is     "+target.pagesPath.size());
         if (target.pagesPath.size()==0) {
@@ -224,7 +227,7 @@ public class DBApp implements DBAppInterface {
                                 target.min.add(targetElement.get(target.clusteringKey).toString());
                                 target.max.add(targetElement.get(target.clusteringKey).toString());
                                 currentPage.list.removeElementAt(maxRows-1);
-                                currentPage.list.removeElementAt(maxRows-1);
+                                currentPage.clusterings.removeElementAt(maxRows-1);
                                 pageIndex=k;
                                 serializePage(newPage);
                                 serializePage(currentPage);
@@ -263,40 +266,41 @@ public class DBApp implements DBAppInterface {
                 } else {
                     // REPEATING A SIMILAR CODE FOR DIFFERENT CASE
 
-                    if (currentClustering.compareTo(target.min.get(k))>0 && currentClustering.compareTo(target.max.get(k))<0 ){
-                        String currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
-                        Page currentPage=deserialize(currentPath);
+                    if (currentClustering.compareTo(target.min.get(k)) > 0 && currentClustering.compareTo(target.max.get(k)) < 0) {
+                        String currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
+                        Page currentPage = deserialize(currentPath);
               /*      if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
                         throw new DBAppException("there is an entry with this primary Key !");*/
-                        if (currentPage.list.size()<maxRows){
-                            pageIndex=k;
-                            break;}
-                        else {
+                        if (currentPage.list.size() < maxRows) {
+                            pageIndex = k;
+                            break;
+                        } else {
                             // shifting one row down and inserting in current page
-                            if (k<target.pagesPath.size()-1){
-                                String nextPath = "src/main/resources/data"+"/"+target.tableName+(k+1)+".bin";
-                                Page nextPage =deserialize(nextPath);
+                            if (k < target.pagesPath.size() - 1) {
+                                String nextPath = "src/main/resources/data" + "/" + target.tableName + (k + 1) + ".bin";
+                                Page nextPage = deserialize(nextPath);
                       /*      if(nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
                                 throw new DBAppException("there is an entry with this primary Key !");*/
-                                if (nextPage.list.size()<maxRows){
-                                    currentPage=deserialize(currentPath);
-                                    Hashtable targetElement = currentPage.list.get( currentPage.list.size()-1);
-                                    nextPage.list.insertElementAt(targetElement,0);
-                                    nextPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(),0);
+                                if (nextPage.list.size() < maxRows) {
+                                    currentPage = deserialize(currentPath);
+                                    Hashtable targetElement = currentPage.list.get(currentPage.list.size() - 1);
+                                    nextPage.list.insertElementAt(targetElement, 0);
+                                    nextPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(), 0);
                      /*           if(nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
                                     throw new DBAppException("there is an entry with this primary Key !");*/
-                                    target.min.set(k+1,targetElement.get(target.clusteringKey).toString());
-                                    currentPage.list.removeElementAt(maxRows-1);
-                                    currentPage.clusterings.removeElementAt(maxRows-1);
-                                    pageIndex=k;
+                                    target.min.set(k + 1, targetElement.get(target.clusteringKey).toString());
+                                    currentPage.list.removeElementAt(maxRows - 1);
+                                    currentPage.clusterings.removeElementAt(maxRows - 1);
+                                    pageIndex = k;
                                     serializePage(nextPage);
                                     serializePage(currentPage);
-                                    break;}
-                            }else {
+                                    break;
+                                }
+                            } else {
                                 // in CASE THAT THE CURRENT PAGE IS THE LAST PAGE , THEN WE CREATE NEW PAGE AND SHIFT ONE ROW DOWN
                                 if (target.pagesPath.size() - 1 == k) {
                                     Page newPage = new Page(target.tableName + target.pagesPath.size());
-                                    target.pagesPath.add("src/main/resources/data" + "/" +newPage.PageID+ ".bin");
+                                    target.pagesPath.add("src/main/resources/data" + "/" + newPage.PageID + ".bin");
                                     currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
                                     currentPage = deserialize(currentPath);
                                     Hashtable targetElement = currentPage.list.get(currentPage.list.size() - 1);
@@ -304,8 +308,8 @@ public class DBApp implements DBAppInterface {
                                     newPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(), 0);
                                     target.min.add(targetElement.get(target.clusteringKey).toString());
                                     target.max.add(targetElement.get(target.clusteringKey).toString());
-                                    currentPage.list.remove(maxRows-1);
-                                    currentPage.clusterings.removeElementAt(maxRows-1);
+                                    currentPage.list.remove(maxRows - 1);
+                                    currentPage.clusterings.removeElementAt(maxRows - 1);
                                     pageIndex = k;
                                     serializePage(newPage);
                                     serializePage(currentPage);
@@ -326,14 +330,46 @@ public class DBApp implements DBAppInterface {
                                     return;
 
                                 }
-                            }}
+                            }
+                        }
 
-                    } else {
+                    }
+                    //here end of for and else
+                }}
+            // I ended the loop with k > no. of tables' pages hence pageindex not assigned to a page so iam bigeer than the max of last page
+            if(k>= target.pagesPath.size()) {
+                String path = target.pagesPath.get(target.pagesPath.size()-1);
+                Page lastPage = deserialize(path);
+
+                if(lastPage.list.size()<maxRows){
+                    lastPage.list.add(colNameValue);
+                    lastPage.clusterings.add(currentClustering);
+                    target.max.removeElementAt(target.max.size()-1);
+                    target.max.add(currentClustering);
+                    return;
+                }
+                else{
+                    Page newPage = new Page(tableName+k);
+                    newPage.list.add(colNameValue);
+                    newPage.clusterings.add(currentClustering);
+                    target.max.add(currentClustering);
+                    target.min.add(currentClustering);
+                    target.pagesPath.add("src/main/resources/data/"+newPage.PageID+".bin");
+                    serializePage(newPage);
+                    return;
+                }
+            }
+
+                    ////////////////////herrrrrrrrrrrre ////////////////////
+                    //we should write the if to let the loop continue if there is no matches in my current page
+                  /*  else  {
                         //  HANDLING SOME DELETION CASES WHERE THERE EXIST SOME SPACE IN PREVIOUS PAGE
                         String currentPath = "src/main/resources/data"+"/"+target.tableName+k+".bin";
                         Page currentPage=deserialize(currentPath);
                         if(currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
                             throw new DBAppException("there is an entry with this primary Key !");
+
+
                         if (target.pagesPath.size()-1>k){
                             if( target.min.get(k+1).compareTo(colNameValue.get(target.clusteringKey).toString())>0 )
                                 if(currentPage.list.size()<maxRows){
@@ -349,6 +385,8 @@ public class DBApp implements DBAppInterface {
                     //INSERTING INTO THE TARGET PAGE
                 }
             }
+            */
+
 
             System.out.println("page index is        "+ pageIndex);
             System.out.println("k is  " + k);
@@ -984,6 +1022,27 @@ public class DBApp implements DBAppInterface {
         }
     }
     public static void main (String[] args) throws DBAppException, IOException, ParseException {
+        FileWriter csvWriter = null;
+
+        //System.out.println(readConfig("MaximumRowsCountinPage"));
+        Page p = deserialize("src/main/resources/data/students1.bin");
+        for(int i =0;i<p.list.size();i++){
+            try {
+                csvWriter = new FileWriter("src/main/resources/t.csv", true);
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try {
+                csvWriter.write(p.list.get(i).toString());
+                csvWriter.write('\n');
+                csvWriter.flush();
+                csvWriter.close();
+            }
+            catch (IOException ex){
+                System.out.println(ex.getMessage());}
+        }
+        System.out.println(p.list.size());
        /*Hashtable table = new Hashtable<String,String>();
 
      table.put("Pen", "soso");
