@@ -112,7 +112,7 @@ public class Milestone1Tests {
     public void testRecordInsertions() throws Exception {
         DBApp dbApp = new DBApp();
         dbApp.init();
-        int limit = 3000;
+        int limit = 100;
 
         insertStudentRecords(dbApp, limit);
         insertCoursesRecords(dbApp, limit);
@@ -421,7 +421,7 @@ public class Milestone1Tests {
     }
 
     @Test
-    /*public void testStudentsDeletionComplex() throws Exception {
+    public void testStudentsDeletionComplex() throws Exception {
         final DBApp dbApp = new DBApp();
         dbApp.init();
 
@@ -546,7 +546,7 @@ public class Milestone1Tests {
         dbApp.deleteFromTable(table, row);
     }
 
-*/
+
     private void insertStudentRecords(DBApp dbApp, int limit) throws Exception {
         BufferedReader studentsTable = new BufferedReader(new FileReader("src/main/resources/students_table.csv"));
         String record;
