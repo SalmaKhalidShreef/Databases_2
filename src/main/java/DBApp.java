@@ -115,6 +115,8 @@ public class DBApp implements DBAppInterface {
 */
     @Override
     public void createIndex(String tableName, String[] columnNames) throws DBAppException {
+        Index index = new Index(tableName,columnNames);
+
 
     }
 
@@ -978,6 +980,156 @@ public class DBApp implements DBAppInterface {
             throw new DBAppException("Columns entered not found in the table!");
         }
     }
+
+
+
+
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    public static void  buildArray (int level, Vector array){
+        if (level==1)
+            return;
+        else {
+            int newLevel =--level;
+            for (int i=0;i<10;i++)
+                array.add(new Vector(10));
+            for(int i =0;i<10;i++)
+                buildArray(newLevel,(Vector) array.get(i));
+        }
+
+    }
+
+    public static void updateMetadata (String[] attributes,String tableName) {
+        Vector<String[]> Data = new Vector<String[]>();
+        String line = "";
+        String splitBy = ",";
+        int i = 0;
+        try {
+
+            BufferedReader br = new BufferedReader(new FileReader("src/main/resources/metadata.csv"));
+            while ((line = br.readLine()) != null)   //returns a Boolean value
+            {
+                String[] array = line.split(splitBy);
+                Data.add(array);
+
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        for (int k = 0; k < attributes.length; k++) {
+            for (int j = 0; j < Data.size(); j++) {
+                if (Data.get(j)[0].equals(tableName) && Data.get(j)[1].equals(attributes[k])) {
+                   Data.get(j)[4]="True";
+
+                }
+            }
+        }
+        String result ="Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max"+'\n';
+        for (int m=0;m<Data.size();m++){
+            for (int n =0;n<Data.get(m).length;n++){
+                if(n==Data.get(m).length-1)
+                result+=Data.get(m)[n];
+                else
+                    result+=Data.get(m)[n]+",";
+
+            }
+            result+='\n';
+        }
+        try {
+            FileWriter csvWriter = new FileWriter("src/main/resources/metadata.csv");
+            csvWriter.write(result);
+            csvWriter.flush();
+            csvWriter.close();
+        } catch(Exception e){
+            System.out.print(e.getMessage());
+        }
+
+
+
+
+    }
+
+
+    public static void createRanges (Index index){
+        Vector<String[]> Data = new Vector<String[]>();
+        String line = "";
+        String splitBy = ",";
+        int i = 0;
+        try {
+
+            BufferedReader br = new BufferedReader(new FileReader("src/main/resources/metadata.csv"));
+            while ((line = br.readLine()) != null)   //returns a Boolean value
+            {
+                String[] array = line.split(splitBy);
+                Data.add(array);
+
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        String min ="";
+        String max ="";
+        String type="";
+        for (int k = 0; k < index.colNames.length; k++) {
+            for (int j = 0; j < Data.size(); j++) {
+                if (Data.get(j)[0].equals(index.tableName) && Data.get(j)[1].equals(index.colNames[k])) {
+                    type=Data.get(j)[2];
+                    min =Data.get(j)[5];
+                    max=Data.get(j)[6];
+                    createRangeList(index,index.colNames[k],type,min,max);
+
+                }
+            }
+        }
+
+
+    }
+
+
+    public static void createRangeList (Index index ,String colName, String type, String min,String max){
+        if (type.equals("java.lang.Integer")||type.equals("java.lang.Double")){
+
+
+
+
+
+
+        } else if (type.equals("java.lang.String")){
+
+
+
+
+
+        }else  if (type.equals("java.util.Date")){
+
+
+
+
+
+
+
+        }
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     public static void main (String[] args) throws DBAppException, IOException, ParseException {
        /*FileWriter csvWriter = null;
         Table t = DeserializeTable("src/main/resources/data/pcs.bin");
