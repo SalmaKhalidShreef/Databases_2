@@ -7,9 +7,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-
+///Final
 public class DBApp implements DBAppInterface {
 
+    //private static Object String;
     Vector<String> tableList;
     Vector<String> tableNames;
 
@@ -31,7 +32,7 @@ public class DBApp implements DBAppInterface {
         if(created)
             System.out.println("Folder was created !");
         else
-            System.out.println("Unable to create folder");
+            System.out.println("shhhh");
 
         String title = "Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max";
         try {
@@ -184,8 +185,8 @@ public class DBApp implements DBAppInterface {
                     else {
                         // check for existance of next page should be added
                         //I have a next page case
-                        if (k < target.pagesPath.size() - 1) {
-                            String nextPath = "src/main/resources/data" + "/" + target.tableName + (k + 1) + ".bin";
+                        String nextPath = "src/main/resources/data" + "/" + target.tableName + (k + 1) + ".bin";
+                        if (target.pagesPath.contains(nextPath)) {
                             Page nextPage = deserialize(nextPath);
                             // next page below max rows
                             if (nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
@@ -258,8 +259,8 @@ public class DBApp implements DBAppInterface {
                         else {
                             // check for existance of next page should be added
                             //I have a next page case
-                            if (k < target.pagesPath.size() - 1) {
-                                String nextPath = "src/main/resources/data" + "/" + target.tableName + (k + 1) + ".bin";
+                            String nextPath = "src/main/resources/data" + "/" + target.tableName + (k + 1) + ".bin";
+                            if (target.pagesPath.contains(nextPath)) {
                                 Page nextPage = deserialize(nextPath);
                                 // next page below max rows
                                 if (nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
@@ -345,7 +346,15 @@ public class DBApp implements DBAppInterface {
         target,int pageIndex) throws DBAppException {
             int x = 0;
             int idx = Collections.binarySearch(currentPage.clusterings, colNameValue.get(target.clusteringKey).toString());
-                x = -1 - idx;
+            if(currentPage ==null)
+            System.out.println("ANA HENA AHO");
+           if(currentPage.clusterings.size()!=currentPage.list.size()){ System.out.println(currentPage.clusterings.size() +"clusterings");
+            System.out.println(currentPage.list.size()+"list");
+
+           System.out.println(currentPage.clusterings.toString());
+           System.out.println(currentPage.list.toString());}
+
+            x = -1 - idx;
                 if (x > 250){
                     throw  new DBAppException("Ana bayez xX");
                     }
@@ -542,19 +551,19 @@ public class DBApp implements DBAppInterface {
                         Date date2 = new SimpleDateFormat("yyyy-mm-dd").parse(strDate);
                         //System.out.println(date1);
                         //System.out.println(date2);
-                        if (date2.compareTo(date1) == -1)
+                        if (date2.compareTo(date1) < 0)
                             throw new DBAppException("you entered date below minimum");
                         max = Data.get(j)[Data.get(j).length - 1];
                         Date datemax=new SimpleDateFormat("yyyy-mm-dd").parse(max);
-                        if (date2.compareTo(datemax) == 1)
+                        if (date2.compareTo(datemax) > 0)
                             throw new DBAppException("you entered date above maximum");
                     }
                     else {
-                        if (colNameValue.get(colName).toString().compareTo(min) == -1) {
+                        if (colNameValue.get(colName).toString().compareTo(min) < 0) {
                             throw new DBAppException("you entered value below minimum");
                         }
                         max = Data.get(j)[Data.get(j).length - 1];
-                        if (colNameValue.get(colName).toString().compareTo(max) == 1) {
+                        if (colNameValue.get(colName).toString().compareTo(max) > 1) {
                             throw new DBAppException("you entered value above maximum");
                         }
                     }
@@ -648,9 +657,9 @@ public class DBApp implements DBAppInterface {
 
             //      System.out.println("Object has been deserialized ");
         } catch (IOException ex) {
-            System.out.println(ex.getMessage());
+            System.out.println(ex.getMessage()+filePath+"in deserialize page");
         } catch (ClassNotFoundException ex) {
-            System.out.println(ex.getMessage());
+            System.out.println(ex.getMessage() +"in deserialize");
         }
         return page;
     }
@@ -683,7 +692,7 @@ public class DBApp implements DBAppInterface {
 
         catch(IOException ex)
         {
-            System.out.println(ex.getMessage());
+            System.out.println(ex.getMessage()+ "in serialize table");
         }
 
     }
@@ -814,7 +823,7 @@ public class DBApp implements DBAppInterface {
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
         } catch (ClassNotFoundException ex) {
-            System.out.println(ex.getMessage());
+            System.out.println(ex.getMessage()+"in deserialize table");
         }
         return table;
 
@@ -841,7 +850,7 @@ public class DBApp implements DBAppInterface {
 
         catch(IOException ex)
         {
-            System.out.println(ex.getMessage());
+            System.out.println(ex.getMessage()+"in serialize table functin");
         }
 
 
@@ -867,7 +876,7 @@ public class DBApp implements DBAppInterface {
 
         catch(IOException ex)
         {
-            System.out.println(ex.getMessage());
+            System.out.println(ex.getMessage()+"serialize table list");
         }
 
     }
@@ -885,9 +894,9 @@ public class DBApp implements DBAppInterface {
 
             //    System.out.println("Object has been deserialized ");
         } catch (IOException ex) {
-            System.out.println(ex.getMessage());
+            System.out.println(ex.getMessage()+"deserialize vector");
         } catch (ClassNotFoundException ex) {
-            System.out.println(ex.getMessage());
+            System.out.println(ex.getMessage()+"deserialize vectoe");
         }
         return v;
 
@@ -913,7 +922,7 @@ public class DBApp implements DBAppInterface {
 
         catch(IOException ex)
         {
-            System.out.println(ex.getMessage());
+            System.out.println(ex.getMessage()+"serialize table names");
         }
 
     }
@@ -930,9 +939,9 @@ public class DBApp implements DBAppInterface {
 
             //     System.out.println("Object has been deserialized ");
         } catch (IOException ex) {
-            System.out.println(ex.getMessage());
+            System.out.println(ex.getMessage()+"'deserialize vectors'");
         } catch (ClassNotFoundException ex) {
-            System.out.println(ex.getMessage());
+            System.out.println(ex.getMessage()+"'deserialize vectors'");
         }
         return v;
 
@@ -970,10 +979,10 @@ public class DBApp implements DBAppInterface {
         }
     }
     public static void main (String[] args) throws DBAppException, IOException, ParseException {
-       /* FileWriter csvWriter = null;
+       /*FileWriter csvWriter = null;
         Table t = DeserializeTable("src/main/resources/data/pcs.bin");
         //System.out.println(readConfig("MaximumRowsCountinPage"));
-        Page p = deserialize("src/main/resources/data/pcs0.bin");
+        Page p = deserialize("src/main/resources/data/students1.bin");
        System.out.println(t.min.toString());
        System.out.println(t.max.toString());
         for(int i =0;i<p.list.size();i++){
@@ -992,53 +1001,7 @@ public class DBApp implements DBAppInterface {
             catch (IOException ex){
                 System.out.println(ex.getMessage());}
         }
-        System.out.println(t.max.get(0));
-
-        */
-        //System.out.println(t.min.get(1));
-       /*Hashtable table = new Hashtable<String,String>();
-
-     table.put("Pen", "soso");
-     table.put("Book", "lolo");
-     table.put("Clothes", "momo");
-     table.put("Mobile", "koko");
-     table.put("Booklet", "hoho");
-
-     Hashtable table1 = new Hashtable<String,String>();
-
-     table1.put("Pen", "soso2");
-     table1.put("Book", "lolo2");
-     table1.put("Clothes", "momo2");
-     table1.put("Mobile", "koko2");
-     table1.put("Booklet", "hoho2");
-
-     Hashtable table2 = new Hashtable<String,String>();
-
-     table2.put("Pen", "soso3");
-     table2.put("Book", "lolo3");
-     table2.put("Clothes", "momo3");
-     table2.put("Mobile", "koko3");
-     table2.put("Booklet", "hoho3");
-
-     DBApp db =new DBApp();
-   db.init();
-
-     db.createTable("marvelous","Pen",table,table1,table2);
+        System.out.println(t.max.get(0));*/
 
 
-    /* FileWriter cw = new FileWriter("src/main/resources/metadata.csv",true);
-     String[] line = {"4", "David", "USA"};
-     //Writing data to the csv file
-    cw.write("lolo");
-     //close the file
-     cw.close();*/
-        Date x = new Date(2000,4,5);
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
-        String xx = dateFormat.format(x);
-        Date d = new Date(1900,2,10);
-        String stringdate = "2000-11-21";
-        //Date mydate = new Date(stringdate);
-        Date date1=new SimpleDateFormat("yyyy-MM-dd").parse(stringdate);
-        String dd =dateFormat.format(d);
-        System.out.println(date1.compareTo(d));
     }}
