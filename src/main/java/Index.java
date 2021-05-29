@@ -7,9 +7,11 @@ public class Index {
     String[] colNames;
     Hashtable<String,Vector> ranges;
     String indexId;
+    Vector grid;
     public Index(String tableName, String[] columnNames){
         this.tableName=tableName;
         colNames=columnNames;
+        grid = new Vector();
         indexId="IDX_"+tableName;
         for (int i=0;i<columnNames.length;i++){
             indexId+="_"+columnNames[i];

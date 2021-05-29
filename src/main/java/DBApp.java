@@ -116,7 +116,8 @@ public class DBApp implements DBAppInterface {
     @Override
     public void createIndex(String tableName, String[] columnNames) throws DBAppException {
         Index index = new Index(tableName,columnNames);
-
+        buildArray(index.colNames.length, index.grid);
+        updateMetadata(columnNames,tableName);
 
     }
 
@@ -1115,7 +1116,52 @@ public class DBApp implements DBAppInterface {
 
 
 
+    public static void insertIntoBucket (String pagePath, Vector colValues , Index index,int currentDimension,Vector data  ){
+            String dimensionName = index.colNames[currentDimension];
+            Vector currentRanges = index.ranges.get(dimensionName);
+            String currentValue = (String) colValues.get(currentDimension);
+            //BASE CASE >>>  INSERTING INTO BUCKET
+            if (currentDimension== index.colNames.length-1){
+                String bucket= null;
+                for (int i=0;i<currentRanges.size();i++) {
+                    if (i == currentRanges.size() - 1) {
+                        bucket = (String) data.get(currentRanges.size() - 1);
+                        break;
+                    } else if (currentValue.compareTo((String) currentRanges.get(i)) > 0 && currentValue.compareTo((String) currentRanges.get(i + 1)) < 0) {
+                        bucket = (String) data.get(currentRanges.size() - 1);
+                        break;
+                    }
+                }
+                // deserializing bucket
 
+
+                //inserting record into it
+
+
+                //serializng it
+
+
+
+                return;
+            } else {
+                for (int i=0;i<currentRanges.size();i++){
+                    if (i==currentRanges.size()-1)
+                       insertIntoBucket(pagePath,colValues,index,++currentDimension,(Vector) data.get(currentRanges.size()-1));
+                    else if(currentValue.compareTo((String) currentRanges.get(i))>0 &&currentValue.compareTo((String) currentRanges.get(i+1))<0 ){
+                        insertIntoBucket(pagePath,colValues,index,++currentDimension,(Vector) data.get(i));
+                        return;
+                    }
+
+
+                }
+
+
+
+
+            }
+
+
+    }
 
 
 
