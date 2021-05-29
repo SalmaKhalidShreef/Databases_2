@@ -118,6 +118,13 @@ public class DBApp implements DBAppInterface {
         Index index = new Index(tableName,columnNames);
         buildArray(index.colNames.length, index.grid);
         updateMetadata(columnNames,tableName);
+        createRanges(index);
+        //method salma w nouran
+
+        //kemo
+
+        index.serializeIndex();
+
 
     }
 

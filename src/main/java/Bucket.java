@@ -1,19 +1,17 @@
-import java.io.Serializable;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Set;
 import java.util.Vector;
 public class Bucket implements Serializable {
     HashMap<String, Vector<String>> list ;
-    Hashtable<String,String> min;
-    Hashtable<String,String> max;
     String BucketId;
-    Vector<String> colNames;
-    Vector<Object>x;
-
-    public Bucket(String id){
+    Bucket overFlow ;
+    Index index;
+    public Bucket(String id , Index i){
         BucketId=id;
         list = new HashMap<String,Vector<String>>();
+        this.index=i;
     }
     public Vector<String> search(String s){
         Vector<String> path = new Vector<String>();
@@ -53,5 +51,47 @@ public Table getTable(String tableName){
           }
       }
 return t;}
+    public  void serializeBucket(){
+        String bucketId = this.BucketId;
+        try
+        {
+            //Saving of object in a file
+            FileOutputStream file = new FileOutputStream("src/main/resources/data/"+bucketId+".bin");
+            ObjectOutputStream out = new ObjectOutputStream(file);
+
+            // Method for serialization of object
+            out.writeObject(this);
+
+            out.close();
+            file.close();
+            //   System.out.println("Object has been serialized");
+
+        }
+
+        catch(IOException ex)
+        {
+            System.out.println(ex.getMessage());
+        }
+
+    }
+    public static Bucket DeserializeBucket(String path){
+        Bucket b = null;
+        try {
+            // Reading the object from a file
+            FileInputStream file = new FileInputStream(path);
+            ObjectInputStream in = new ObjectInputStream(file);
+            // Method for deserialization of object
+            b = (Bucket) in.readObject();
+            in.close();
+            file.close();
+
+            //  System.out.println("Object has been deserialized ");
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
+        } catch (ClassNotFoundException ex) {
+            System.out.println(ex.getMessage());
+        }
+        return b;}
 
 }
+
