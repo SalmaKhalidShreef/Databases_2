@@ -1088,30 +1088,59 @@ public class DBApp implements DBAppInterface {
 
 
     public static void createRangeList (Index index ,String colName, String type, String min,String max){
-        if (type.equals("java.lang.Integer")||type.equals("java.lang.Double")){
+        if (type.equals("java.lang.Integer")){
+            int range = (int)Math.ceil(((Integer.parseInt(max)-Integer.parseInt(min))+1)/10.0);
+           Vector r =  index.ranges.get(colName);
+           r.add(min);
+           for(int i=1;i<10;i++){
+               int prevMin =Integer.parseInt(String.valueOf(r.get(i-1)));
+               int currMin = prevMin+range;
+                if(currMin>Integer.parseInt(max)){
+                    r.add(max);
+                }
+                else
+               r.add(String.valueOf(currMin));
+           }}
+           else if(type.equals("java.lang.Double")){
+            double range = Math.ceil(((Double.parseDouble(max)-Double.parseDouble(min))+1)/10.0);
+            Vector r =  index.ranges.get(colName);
+            r.add(min);
+            for(int i=1;i<10;i++){
+                double prevMin =Double.parseDouble((String.valueOf(r.get(i-1))));
+                double currMin = prevMin+range;
+                if(currMin>Integer.parseInt(max)){
+                    r.add(max);
+                }
+                else
+                r.add(String.valueOf(currMin));
+            }}
 
-
-
-
-
-
-        } else if (type.equals("java.lang.String")){
-
-
-
-
-
-        }else  if (type.equals("java.util.Date")){
-
-
-
-
-
-
-
+         else if (type.equals("java.lang.String")){
+            int range = (int)Math.ceil(((max.toLowerCase(Locale.ROOT).charAt(0))-(min.toLowerCase(Locale.ROOT).charAt(0))+1)/10.0);
+            Vector r =  index.ranges.get(colName);
+            r.add((int)min.toLowerCase(Locale.ROOT).charAt(0));
+            for(int i=1;i<10;i++){
+                int prevMin =Integer.parseInt(String.valueOf(r.get(i-1)));
+                int currMin = prevMin+range;
+                if(currMin>max.toLowerCase(Locale.ROOT).charAt(0))
+                    r.add((int)max.toLowerCase(Locale.ROOT).charAt(0));
+                else
+                r.add(String.valueOf(currMin));
+            }}
+    else  if (type.equals("java.util.Date")){
+            String minDate = min.replace("-","");
+            String maxDate = max.replace("-","");
+            int range = (int)Math.ceil(((Integer.parseInt(maxDate)-Integer.parseInt(minDate))+1)/10.0);
+            Vector r =  index.ranges.get(colName);
+            r.add(minDate);
+            for(int i=1;i<10;i++){
+                int prevMin =Integer.parseInt(String.valueOf(r.get(i-1)));
+                int currMin = prevMin+range;
+                if(currMin>Integer.parseInt(maxDate))
+                    r.add(String.valueOf(maxDate));
+                r.add(String.valueOf(currMin));
+            }
         }
-
-
     }
 
 
@@ -1177,6 +1206,13 @@ public class DBApp implements DBAppInterface {
 
 
     public static void main (String[] args) throws DBAppException, IOException, ParseException {
+        String [] minDate = "22-7-1999".split("-");
+        String [] maxDate = "30-5-2014".split("-");
+        //    public static void createRangeList (Index index ,String colName, String type, String min,String max){
+        Index i = new Index("student", new String[]{"name"});
+        createRangeList(i,"name","java.util.Date","1999-11-01","2012-11-01");
+           System.out.println(i.ranges.get("name").toString());
+        //System.out.println(Integer.parseInt("12344"));
        /*FileWriter csvWriter = null;
         Table t = DeserializeTable("src/main/resources/data/pcs.bin");
         //System.out.println(readConfig("MaximumRowsCountinPage"));
