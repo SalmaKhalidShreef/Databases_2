@@ -1,14 +1,20 @@
 import java.io.*;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.Set;
-import java.util.Vector;
+import java.util.*;
+
 public class Bucket implements Serializable {
+    int noOfEntries;
+    int max;
     HashMap<String, Vector<String>> list ;
     String BucketId;
     Bucket overFlow ;
     Index index;
-    public Bucket(String id , Index i){
+    public Bucket(String id , Index i) {
+        noOfEntries= 0;
+        try {
+            max = readConfig("MaximumKeysCountinIndexBucket");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         BucketId=id;
         list = new HashMap<String,Vector<String>>();
         this.index=i;
@@ -92,6 +98,15 @@ return t;}
             System.out.println(ex.getMessage());
         }
         return b;}
+    public int readConfig(String key) throws IOException {
+        int nRows=0;
+        FileReader reader=new FileReader("src/main/resources/DBApp.config");
+
+        Properties p=new Properties();
+        p.load(reader);
+        return Integer.parseInt(p.getProperty(key));
+    }
+
 
 }
 
