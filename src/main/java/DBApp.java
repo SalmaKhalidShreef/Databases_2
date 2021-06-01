@@ -1175,198 +1175,145 @@ public class DBApp implements DBAppInterface {
             }
         }
     }
+    public static void insertIntoBucketUpdate(String pagePath, Vector colValues , Index index,int currentDimension,Vector data, String dimensionValue ) {
+        String dimensionName = index.colNames[currentDimension];
+        Vector currentRanges = index.ranges.get(dimensionName);
+        Object currentValue = colValues.get(currentDimension);
+        String bucketPath = null;
+        int i = 0;//to get the range index
+        //BASE CASE >>>  INSERTING INTO BUCKET
+        if (currentDimension == index.colNames.length - 1) {
 
-
-
-    public static void insertIntoBucketUpdate(String pagePath, Vector colValues , Index index,int currentDimension,Vector data  ){
-            String dimensionName = index.colNames[currentDimension];
-            Vector currentRanges = index.ranges.get(dimensionName);
-            Object currentValue = colValues.get(currentDimension);
-            //BASE CASE >>>  INSERTING INTO BUCKET
-            if (currentDimension== index.colNames.length-1){
-                String bucket= null;
-                for (int i=0;i<currentRanges.size();i++) {
-                    if (i == currentRanges.size() - 1) {
-                        bucket = (String) data.get(currentRanges.size() - 1);
-                        break;
-                    } else {
-                            String type=getType(dimensionName);
-                            if(type.equals("java.lang.String")){
-                                Character c = currentValue.toString().charAt(0);
-                                Character range = (Character) currentRanges.get(i);
-                                if (c<=range) {
-                                    bucket= (String)data.get(i);
-                                    break;
-                                }
-                            }
-                            else if(type.equals("java.lang.Integer")){
-                                if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
-                                    bucket= (String)data.get(i);
-                                    break;
-                                }
-                            }
-                            else if(type.equals("java.lang.Double")){
-                                if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
-                                    bucket= (String)data.get(i);
-                                    break;
-                                }
-                            }
-                            else if(type.equals("java.util.Date")){
-                                String currDate = ((Date) currentValue).toString();
-                                int numcurDate = Integer.parseInt(currDate);
-                                int rangeDate = Integer.parseInt(currentRanges.get(i).toString());
-                                if (numcurDate<=rangeDate) {
-                                    bucket= (String)data.get(i);
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                try {
-                                    throw new DBAppException("WRONG DATATYPE");
-                                } catch (DBAppException e) {
-                                    System.out.println(e.getMessage());
-                                }
-                            }
-
-
-
+            for (i = 0; i < currentRanges.size(); i++) {
+                //last bucket case
+                if (i == currentRanges.size() - 1) {
+                    bucketPath = (String) data.get(currentRanges.size() - 1);
+                    dimensionValue += currentRanges.size() - 1;
+                    break;
+                } else {
+                    String type = getType(dimensionName);
+                    if (type.equals("java.lang.String")) {
+                        Character c = currentValue.toString().charAt(0);
+                        Character range = (Character) currentRanges.get(i);
+                        if (c <= range) {
+                            bucketPath = (String) data.get(i);
+                            dimensionValue += i;
+                            break;
                         }
-                }}}
-                /*if(bucket== null)
-                    bucket = new Bucket("",index);
-                else
-                    bucket = Bucket.DeserializeBucket(bucketpath);
-                if(contains(index.colNames,index.clusteringKey)){
-                    Vector a = bucket.list.get(colnameval.get(index.clusteringKey));
-                    if(a== null){
-                        if(bucket.noOfEntries<bucket.max) {
+                    } else if (type.equals("java.lang.Integer")) {
+                        if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                            bucketPath = (String) data.get(i);
+                            dimensionValue += i;
+                            break;
+                        }
+                    } else if (type.equals("java.lang.Double")) {
+                        if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                            bucketPath = (String) data.get(i);
+                            dimensionValue += i;
+                            break;
+                        }
+                    } else if (type.equals("java.util.Date")) {
+                        String currDate = ((Date) currentValue).toString();
+                        int numcurDate = Integer.parseInt(currDate);
+                        int rangeDate = Integer.parseInt(currentRanges.get(i).toString());
+                        if (numcurDate <= rangeDate) {
+                            bucketPath = (String) data.get(i);
+                            dimensionValue += i;
+                            break;
+                        }
+                    } else {
+                        try {
+                            throw new DBAppException("WRONG DATATYPE");
+                        } catch (DBAppException e) {
+                            System.out.println(e.getMessage());
+                        }
+                    }
+
+
+                }
+            }
+
+
+            ///here curly prases of the method
+            String s = index.indexId;
+            //case no created bucket was found in the grid
+            Bucket bucket = null;
+            if (bucketPath == null) {
+                Bucket newBucket = new Bucket(index.indexId + dimensionValue, index);
+                bucketPath = "src/main/resources/data/" + newBucket.BucketId + ".bin";
+                data.add(i);
+            }
+            //String bucketPath ="src/main/resources/data/"+index.indexId+dimensionValue+".bin";
+
+            else {
+                bucket = Bucket.DeserializeBucket(bucketPath);
+                if (contains(index.colNames, index.clusteringKey)) {
+                    int m = 0;
+                    for (int j = 0; j < index.colNames.length; j++) {
+                        if (index.colNames[j].equals(index.clusteringKey)) {
+                            m = j;
+                        }
+                    }
+
+                    Vector a = bucket.list.get(currentValue);
+
+                    if (a == null) {
+                        if (bucket.noOfEntries < bucket.max) {
                             bucket.noOfEntries++;
                             a = new Vector<String>();
                         }
-                        else{
-                            a= new Vector<String>();
+                        //adding to the overflow
+                        else {
+                            a = new Vector<String>();
                             a.add(pagePath);
-                            if(bucket.overFlow==null) {
+                            if (bucket.overFlow == null) {
                                 bucket.overFlow = new Bucket(bucket.BucketId + "Over", index);
-                                bucket.overFlow.list.put((String) colnameval.get(index.clusteringKey), a);
-                            }
-                            else{
+                                bucket.overFlow.list.put((String) colValues.get(m), a);
+                            } else {
                                 a.add(pagePath);
-                                bucket.list.put((String) colnameval.get(index.clusteringKey), a);
+                                bucket.list.put((String) colValues.get(m), a);
                             }
                         }
-
                     }
                     a.add(pagePath);
-                    bucket.list.put((String) colnameval.get(index.clusteringKey), a);
-
+                    bucket.list.put((String) colValues.get(m), a);
                 }
                 //use left most col if primary key doesn't exist
-                else{
-                    Vector a = bucket.list.get(colnameval.get(0));
-                    if(a== null){
-                        if(bucket.noOfEntries<bucket.max) {
+                else {
+                    Vector a = bucket.list.get(colValues.get(0));
+                    if (a == null) {
+                        if (bucket.noOfEntries < bucket.max) {
                             a = new Vector<String>();
                             bucket.noOfEntries++;
-                        }
-                        else{
-                            a= new Vector<String>();
+                        } else {
+                            a = new Vector<String>();
                             a.add(pagePath);
-                            if(bucket.overFlow==null) {
+                            if (bucket.overFlow == null) {
                                 bucket.overFlow = new Bucket(bucket.BucketId + "Over", index);
-                                bucket.overFlow.list.put((String) colnameval.get(index.clusteringKey), a);
-                            }
-                            else{
+                                bucket.overFlow.list.put((String) colValues.get(0), a);
+                            } else {
                                 a.add(pagePath);
-                                bucket.list.put((String) colnameval.get(index.clusteringKey), a);
+                                bucket.overFlow.list.put((String) colValues.get(0), a);
                             }
                         }
 
                     }
                     a.add(pagePath);
-                    bucket.list.put((String) colnameval.get(index.clusteringKey), a);
+                    bucket.list.put((String) colValues.get(0), a);
                 }
-
-
             }
-            else{
-                currentDimension++;
-                insertIntoBucket ( pagePath,indexes ,index,currentDimension, (Vector) data.get(indexes[currentDimension]), colnameval );
 
-            }
+        }
+        // public static void insertIntoBucketUpdate(String pagePath, Vector colValues , Index index ,int currentDimension ,Vector data, String dimensionValue )
+        else{
+            currentDimension++;
+            insertIntoBucketUpdate ( pagePath,colValues ,index,currentDimension, (Vector) data.get(indexes[currentDimension]), dimensionValue );
+
+        }
         bucket.serializeBucket();
-                // deserializing bucket
+        }
 
 
-                //inserting record into it
-
-
-                //serializng it
-
-
-
-                return;
-            } else {
-                for (int i=0;i<currentRanges.size();i++){
-                    if (i==currentRanges.size()-1)
-                       insertIntoBucketUpdate(pagePath,colValues,index,++currentDimension,(Vector) data.get(currentRanges.size()-1));
-                    else{
-                        String type=getType(dimensionName);
-                        if(type.equals("java.lang.String")){
-                            Character c = currentValue.toString().charAt(0);
-                            Character range = (Character) currentRanges.get(i);
-                            if (c<=range) {
-                                insertIntoBucketUpdate(pagePath, colValues, index, ++currentDimension, (Vector) data.get(i));
-                                break;
-                            }
-                        }
-                        else if(type.equals("java.lang.Integer")){
-                            if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
-                                insertIntoBucketUpdate(pagePath, colValues, index, ++currentDimension, (Vector) data.get(i));
-                                break;
-                            }
-                        }
-                        else if(type.equals("java.lang.Double")){
-                            if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
-                                insertIntoBucketUpdate(pagePath, colValues, index, ++currentDimension, (Vector) data.get(i));
-                                break;
-                            }
-                        }
-                        else if(type.equals("java.util.Date")){
-                            String currDate = ((Date) currentValue).toString();
-                            int numcurDate = Integer.parseInt(currDate);
-                            int rangeDate = Integer.parseInt(currentRanges.get(i).toString());
-                            if (numcurDate<=rangeDate) {
-                                insertIntoBucketUpdate(pagePath, colValues, index, ++currentDimension, (Vector) data.get(i));
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            try {
-                                throw new DBAppException("WRONG DATATYPE");
-                            } catch (DBAppException e) {
-                                System.out.println(e.getMessage());
-                            }
-                        }
-
-                        if(currentValue.toString().compareTo((String) currentRanges.get(i))>0 &&currentValue.toString().compareTo((String) currentRanges.get(i+1))<0 ) {
-                            insertIntoBucketUpdate(pagePath, colValues, index, ++currentDimension, (Vector) data.get(i));
-                            return;
-                        }
-                    }
-
-
-                }
-
-
-
-
-            }
-
-
-    }*/
    /* public void createIndex(String tableName, String[] columnNames) throws DBAppException {
         Index index = new Index(tableName,columnNames);
 
@@ -1380,7 +1327,7 @@ public class DBApp implements DBAppInterface {
             Vector colValues = new Vector<String>();
             for(int j  =0 ; j<index.colNames.length;j++){
                 colValues.add(colnamevalue.get(index.colNames[i]));
-                insertIntoBucketUpdate (pagePath,colValues , index,0,index.grid);
+                insertIntoBucketUpdate (pagePath,colValues , index,0,index.grid,"");
             }
         }
 
@@ -1390,6 +1337,7 @@ public class DBApp implements DBAppInterface {
         if(currentDimension== index.colNames.length-1){
             String bucketpath = (String)data.get(indexes[indexes.length-1]);
             if(bucketpath == null)
+                ///indexId + current dimension ??
                  bucket = new Bucket(bucketpath,index);
             else
              bucket = Bucket.DeserializeBucket(bucketpath);
@@ -1540,18 +1488,6 @@ public static boolean contains (String [] arr, String s ){
 
         serializePage(page);
     }
-
-
-
-
-
-
-
-
-
-
-
-
 
     public static void main (String[] args) throws DBAppException, IOException, ParseException {
         String [] minDate = "22-7-1999".split("-");
