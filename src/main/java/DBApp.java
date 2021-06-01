@@ -1183,7 +1183,7 @@ public class DBApp implements DBAppInterface {
         int i = 0;//to get the range index
         //BASE CASE >>>  INSERTING INTO BUCKET
         if (currentDimension == index.colNames.length - 1) {
-
+            Bucket bucket;
             for (i = 0; i < currentRanges.size(); i++) {
                 //last bucket case
                 if (i == currentRanges.size() - 1) {
@@ -1234,14 +1234,21 @@ public class DBApp implements DBAppInterface {
             }
 
 
+
+
+            //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   Dangerous Area   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+
+
+
             ///here curly prases of the method
             String s = index.indexId;
             //case no created bucket was found in the grid
-            Bucket bucket = null;
+             bucket = null;
             if (bucketPath == null) {
                 Bucket newBucket = new Bucket(index.indexId + dimensionValue, index);
                 bucketPath = "src/main/resources/data/" + newBucket.BucketId + ".bin";
-                data.add(i);
+                data.insertElementAt(bucketPath,i);
+
             }
             //String bucketPath ="src/main/resources/data/"+index.indexId+dimensionValue+".bin";
 
@@ -1271,12 +1278,15 @@ public class DBApp implements DBAppInterface {
                                 bucket.overFlow.list.put((String) colValues.get(m), a);
                             } else {
                                 a.add(pagePath);
-                                bucket.list.put((String) colValues.get(m), a);
+                                bucket.overFlow.list.put((String) colValues.get(m), a);
                             }
+                            bucket.overFlow.serializeBucket();
                         }
                     }
+                    else{
                     a.add(pagePath);
                     bucket.list.put((String) colValues.get(m), a);
+                }
                 }
                 //use left most col if primary key doesn't exist
                 else {
@@ -1302,15 +1312,63 @@ public class DBApp implements DBAppInterface {
                     bucket.list.put((String) colValues.get(0), a);
                 }
             }
-
+            bucket.serializeBucket();
         }
         // public static void insertIntoBucketUpdate(String pagePath, Vector colValues , Index index ,int currentDimension ,Vector data, String dimensionValue )
         else{
-            currentDimension++;
-            insertIntoBucketUpdate ( pagePath,colValues ,index,currentDimension, (Vector) data.get(indexes[currentDimension]), dimensionValue );
+            int k=-1;
+
+            for (i = 0; i < currentRanges.size(); i++) {
+                //last bucket case
+                if (i == currentRanges.size() - 1) {
+                    k=i;
+                    dimensionValue += currentRanges.size() - 1;
+                    break;
+                } else {
+                    String type = getType(dimensionName);
+                    if (type.equals("java.lang.String")) {
+                        Character c = currentValue.toString().charAt(0);
+                        Character range = (Character) currentRanges.get(i);
+                        if (c <= range) {
+                            k=i;
+                            dimensionValue += i;
+                            break;
+                        }
+                    } else if (type.equals("java.lang.Integer")) {
+                        if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                            k=i;
+                            dimensionValue += i;
+                            break;
+                        }
+                    } else if (type.equals("java.lang.Double")) {
+                        if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                            k=i;
+                            dimensionValue += i;
+                            break;
+                        }
+                    } else if (type.equals("java.util.Date")) {
+                        String currDate = ((Date) currentValue).toString();
+                        int numcurDate = Integer.parseInt(currDate);
+                        int rangeDate = Integer.parseInt(currentRanges.get(i).toString());
+                        if (numcurDate <= rangeDate) {
+                            k=i;
+                            dimensionValue += i;
+                            break;
+                        }
+                    } else {
+                        try {
+                            throw new DBAppException("WRONG DATATYPE");
+                        } catch (DBAppException e) {
+                            System.out.println(e.getMessage());
+                        }
+                    }
+
+
+                }
+            }
+            insertIntoBucketUpdate(pagePath,colValues,index,currentDimension+1,(Vector) data.get(k),dimensionValue);
 
         }
-        bucket.serializeBucket();
         }
 
 
@@ -1334,11 +1392,16 @@ public class DBApp implements DBAppInterface {
     }
     public static void insertIntoBucket (String pagePath, int[] indexes , Index index,int currentDimension,Vector data , Hashtable<String , Object> colnameval ) {
         Bucket bucket =null;
+        String dimensionValue="";
         if(currentDimension== index.colNames.length-1){
+            for(int i=0;i<indexes.length;i++)
+                dimensionValue+=indexes[i];
             String bucketpath = (String)data.get(indexes[indexes.length-1]);
-            if(bucketpath == null)
+            if(bucketpath == null) {
                 ///indexId + current dimension ??
-                 bucket = new Bucket(bucketpath,index);
+                bucket = new Bucket(index.indexId + dimensionValue, index);
+                data.insertElementAt("src/main/resources/data/" + bucket.BucketId + ".bin",indexes[indexes.length-1]);
+            }
             else
              bucket = Bucket.DeserializeBucket(bucketpath);
             if(contains(index.colNames,index.clusteringKey)){
@@ -1379,17 +1442,17 @@ public class DBApp implements DBAppInterface {
                         a.add(pagePath);
                         if(bucket.overFlow==null) {
                             bucket.overFlow = new Bucket(bucket.BucketId + "Over", index);
-                            bucket.overFlow.list.put((String) colnameval.get(index.clusteringKey), a);
+                            bucket.overFlow.list.put((String) colnameval.get(0), a);
                         }
                         else{
                             a.add(pagePath);
-                            bucket.list.put((String) colnameval.get(index.clusteringKey), a);
+                            bucket.list.put((String) colnameval.get(0), a);
                         }
                     }
 
                 }
                 a.add(pagePath);
-                bucket.list.put((String) colnameval.get(index.clusteringKey), a);
+                bucket.list.put((String) colnameval.get(0), a);
             }
 
 
