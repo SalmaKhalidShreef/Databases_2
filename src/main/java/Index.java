@@ -22,7 +22,7 @@ public class Index {
         for (int i=0;i<colNames.length;i++)
             ranges.put(columnNames[i],new Vector());
     }
-    public void serializeIndex(){
+    public  void serializeIndex(){
         String indexId = this.indexId;
         try
         {

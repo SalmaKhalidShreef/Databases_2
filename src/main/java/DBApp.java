@@ -504,7 +504,7 @@ public class DBApp implements DBAppInterface {
                 }
 
 
-                deleteUsingIndex(index,existingCol,nonExistingCol,0,index.grid);
+                deleteUsingIndex(index,existingCol,nonExistingCol,0,index.grid,columnNameValue);
 
 
 
@@ -802,7 +802,7 @@ public class DBApp implements DBAppInterface {
         }
 
         return p;}
-    public int getRow (Page p , Hashtable<String,Object> colNameValue,String clusteringKey) throws DBAppException {
+    public static int getRow(Page p, Hashtable<String, Object> colNameValue, String clusteringKey) throws DBAppException {
         int idx=0;
         //table doesnt exist
         //I have the primary key and can search with it
@@ -1272,7 +1272,7 @@ public class DBApp implements DBAppInterface {
             //case no created bucket was found in the grid
              bucket = null;
             if (bucketPath == null) {
-                Bucket newBucket = new Bucket(index.indexId + dimensionValue, index);
+                Bucket newBucket = new Bucket(index.indexId + dimensionValue, "src/main/resources/data/"+index.indexId+".bin");
                 bucketPath = "src/main/resources/data/" + newBucket.BucketId + ".bin";
                 data.insertElementAt(bucketPath,i);
 
@@ -1301,7 +1301,7 @@ public class DBApp implements DBAppInterface {
                             a = new Vector<String>();
                             a.add(pagePath);
                             if (bucket.overFlow == null) {
-                                bucket.overFlow = new Bucket(bucket.BucketId + "Over", index);
+                                bucket.overFlow = new Bucket(bucket.BucketId + "Over", "src/main/resources/data/"+index.indexId+".bin");
                                 bucket.overFlow.list.put((String) colValues.get(m), a);
                             } else {
                                 a.add(pagePath);
@@ -1326,7 +1326,7 @@ public class DBApp implements DBAppInterface {
                             a = new Vector<String>();
                             a.add(pagePath);
                             if (bucket.overFlow == null) {
-                                bucket.overFlow = new Bucket(bucket.BucketId + "Over", index);
+                                bucket.overFlow = new Bucket(bucket.BucketId + "Over", "src/main/resources/data/"+index.indexId+".bin");
                                 bucket.overFlow.list.put((String) colValues.get(0), a);
                             } else {
                                 a.add(pagePath);
@@ -1425,7 +1425,7 @@ public class DBApp implements DBAppInterface {
             String bucketpath = (String)data.get(indexes[indexes.length-1]);
             if(bucketpath == null) {
                 ///indexId + current dimension ??
-                bucket = new Bucket(index.indexId + dimensionValue, index);
+                bucket = new Bucket(index.indexId + dimensionValue, "src/main/resources/data/"+index.indexId+".bin");
                 data.insertElementAt("src/main/resources/data/" + bucket.BucketId + ".bin",indexes[indexes.length-1]);
             }
             else
@@ -1441,7 +1441,7 @@ public class DBApp implements DBAppInterface {
                         a= new Vector<String>();
                         a.add(pagePath);
                         if(bucket.overFlow==null) {
-                            bucket.overFlow = new Bucket(bucket.BucketId + "Over", index);
+                            bucket.overFlow = new Bucket(bucket.BucketId + "Over", "src/main/resources/data/"+index.indexId+".bin");
                             bucket.overFlow.list.put((String) colnameval.get(index.clusteringKey), a);
                         }
                         else{
@@ -1467,7 +1467,7 @@ public class DBApp implements DBAppInterface {
                         a= new Vector<String>();
                         a.add(pagePath);
                         if(bucket.overFlow==null) {
-                            bucket.overFlow = new Bucket(bucket.BucketId + "Over", index);
+                            bucket.overFlow = new Bucket(bucket.BucketId + "Over", "src/main/resources/data/"+index.indexId+".bin");
                             bucket.overFlow.list.put((String) colnameval.get(0), a);
                         }
                         else{
@@ -1625,7 +1625,7 @@ public static boolean contains (String [] arr, String s ){
         return false;
    }
 
-    public static void deleteUsingIndex(Index index,Hashtable<String,Object>  existingCol,Hashtable<String,Object> nonExistingCol,int currentDimension,Vector data) {
+    public static void deleteUsingIndex(Index index,Hashtable<String,Object>  existingCol,Hashtable<String,Object> nonExistingCol,int currentDimension,Vector data , Hashtable<String,Object>colNameValue) throws DBAppException {
         String dimensionName = index.colNames[currentDimension];
         Vector currentRanges = index.ranges.get(dimensionName);
         Object currentValue = existingCol.get(dimensionName);
@@ -1640,7 +1640,7 @@ public static boolean contains (String [] arr, String s ){
                     if (bucketPath == null)
                         return;
                     else
-                        deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+                        deleteFromBucket(bucketPath,colNameValue);
 
                 }
 
@@ -1651,7 +1651,7 @@ public static boolean contains (String [] arr, String s ){
                         if (bucketPath == null)
                             return;
                         else
-                            deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+                            deleteFromBucket(bucketPath, colNameValue);
                     } else {
                         String type = getType(dimensionName);
                         if (type.equals("java.lang.String")) {
@@ -1659,19 +1659,19 @@ public static boolean contains (String [] arr, String s ){
                             Character range = (Character) currentRanges.get(i);
                             if (c <= range) {
                                 bucketPath = (String) data.get(i);
-                                deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+                                deleteFromBucket(bucketPath, colNameValue);
                                 break;
                             }
                         } else if (type.equals("java.lang.Integer")) {
                             if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
                                 bucketPath = (String) data.get(i);
-                                deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+                                deleteFromBucket(bucketPath, colNameValue);
                                 break;
                             }
                         } else if (type.equals("java.lang.Double")) {
                             if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
                                 bucketPath = (String) data.get(i);
-                                deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+                                deleteFromBucket(bucketPath, colNameValue);
                                 break;
                             }
                         } else if (type.equals("java.util.Date")) {
@@ -1680,7 +1680,7 @@ public static boolean contains (String [] arr, String s ){
                             int rangeDate = Integer.parseInt(currentRanges.get(i).toString());
                             if (numcurDate <= rangeDate) {
                                 bucketPath = (String) data.get(i);
-                                deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+                                deleteFromBucket(bucketPath, colNameValue);
                                 break;
                             }
                         } else {
@@ -1743,7 +1743,7 @@ public static boolean contains (String [] arr, String s ){
 
                 }
             }
-             deleteUsingIndex(index,existingCol,nonExistingCol,currentDimension+1,(Vector) data.get(k));
+             deleteUsingIndex(index,existingCol,nonExistingCol,currentDimension+1,(Vector) data.get(k),colNameValue);
 
 
 
@@ -1758,12 +1758,47 @@ public static boolean contains (String [] arr, String s ){
             }
 
 
-        public static void  deleteFromBucket(String bucketPath,Hashtable<String,Object> nonExistingCol,Hashtable<String,Object> existingCol){
+        public static void  deleteFromBucket(String bucketPath,Hashtable<String,Object> columnNameValue) throws DBAppException {
         Bucket bucket=Bucket.DeserializeBucket(bucketPath);
+        String indexingcol = null;
+        String indexPath = bucket.indexPath;
+        Index i =Index.DeserializeIndex(indexPath);
+        String key = i.clusteringKey;
+        String tableName = i.tableName;
+        int row =-1;
+        if(columnNameValue.containsKey(key)){
+            indexingcol=key;
+        }
+        else
+            indexingcol = i.colNames[0];
+            Vector<String> pagesList = bucket.list.get(indexingcol);
 
-
-
-
+            if(!columnNameValue.containsKey(indexingcol)){
+            pagesList = new Vector<>();
+            for(int j =0;j<bucket.list.size();j++){
+                for(int k =0;k<bucket.list.get(j).size();k++){
+                    if(!pagesList.contains(bucket.list.get(j).get(k)))
+                    pagesList.add(bucket.list.get(j).get(k));
+                }
+            }
+        }
+        Vector<String> deletedPages = new Vector<>();
+         for(int j=0;j<pagesList.size();j++){
+             Page p = deserialize(pagesList.get(j));
+              row = getRow(p,columnNameValue,key);
+             if(row!=-1){
+                 p.list.removeElementAt(row);
+                 deletedPages.add(pagesList.get(j));
+             }
+             serializePage(p);
+         }
+         for(int j=0;j<deletedPages.size();j++){
+             if(pagesList.contains(deletedPages.get(j))){
+                 pagesList.remove(deletedPages.get(j));
+             }
+         }
+         i.serializeIndex();
+         bucket.serializeBucket();
         }
 
 
