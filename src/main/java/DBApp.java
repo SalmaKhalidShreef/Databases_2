@@ -6,7 +6,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-
+import java.util.Map;
 ///Final
 public class DBApp implements DBAppInterface {
 
@@ -458,29 +458,56 @@ public class DBApp implements DBAppInterface {
         @Override
         public void deleteFromTable (String tableName, Hashtable < String, Object > columnNameValue) throws
         DBAppException {
-            // colNotFound(tableName,columnNameValue);
-            Page p = getPage(tableName, columnNameValue);
-            if (p != null) {
-                try {
-                    Table t = DeserializeTable("src/main/resources/data/" + tableName + ".bin");
-                    int rowIdx = getRow(p, columnNameValue, tableName);
-                    String cluster = p.list.get(rowIdx).get(t.clusteringKey).toString();
-                    p.list.removeElementAt(rowIdx);
-                    p.clusterings.removeElementAt(rowIdx);
-                    char pid = p.PageID.charAt(tableName.length());
-                    int idx = Character.getNumericValue(pid);
-                    if (cluster.equals(t.min.get(idx))) {
-                        t.min.set(idx, p.clusterings.get(0));
-                    }
 
-                    if (cluster.equals(t.max.get(idx))) {
-                        t.max.removeElementAt(idx);
-                        t.max.set(idx, p.clusterings.get(p.clusterings.size() - 1));
+            String indexPath = getIndex(tableName, columnNameValue);
+            if (indexPath == null) {
+                Page p = getPage(tableName, columnNameValue);
+                if (p != null) {
+                    try {
+                        Table t = DeserializeTable("src/main/resources/data/" + tableName + ".bin");
+                        int rowIdx = getRow(p, columnNameValue, tableName);
+                        String cluster = p.list.get(rowIdx).get(t.clusteringKey).toString();
+                        p.list.removeElementAt(rowIdx);
+                        p.clusterings.removeElementAt(rowIdx);
+                        char pid = p.PageID.charAt(tableName.length());
+                        int idx = Character.getNumericValue(pid);
+                        if (cluster.equals(t.min.get(idx))) {
+                            t.min.set(idx, p.clusterings.get(0));
+                        }
+
+                        if (cluster.equals(t.max.get(idx))) {
+                            t.max.removeElementAt(idx);
+                            t.max.set(idx, p.clusterings.get(p.clusterings.size() - 1));
+                        }
+                        serializeTable(t);
+                    } catch (Exception x) {
+                        System.out.println(x.getMessage());
                     }
-                    serializeTable(t);
-                } catch (Exception x) {
-                    System.out.println(x.getMessage());
                 }
+            }else {
+                // DELETING USING THE INDEX
+              Index index =  Index.DeserializeIndex(indexPath);
+              Hashtable<String,Object> existingCol =new Hashtable<String,Object>();
+              Hashtable<String,Object> nonExistingCol =new Hashtable<String,Object>();
+
+              // identifying existing cols in the delete request compared to index columns
+              for (int k=0; k<index.colNames.length;k++){
+                  if (columnNameValue.containsKey(index.colNames[k]))
+                      existingCol.put(index.colNames[k],columnNameValue.get(index.colNames[k]));
+              }
+
+                // identifying nonExisting cols in the index compared to the delete request
+
+                for (Map.Entry<String, Object> e : columnNameValue.entrySet()){
+                    if (!containsKey(index.colNames,e.getKey()))
+                        nonExistingCol.put(e.getKey(),e.getValue());
+                }
+
+
+                deleteUsingIndex(index,existingCol,nonExistingCol,0,index.grid);
+
+
+
             }
         }
 
@@ -1319,7 +1346,6 @@ public class DBApp implements DBAppInterface {
             int k=-1;
 
             for (i = 0; i < currentRanges.size(); i++) {
-                //last bucket case
                 if (i == currentRanges.size() - 1) {
                     k=i;
                     dimensionValue += currentRanges.size() - 1;
@@ -1551,6 +1577,197 @@ public static boolean contains (String [] arr, String s ){
 
         serializePage(page);
     }
+
+
+
+    public static String getIndex (String tableName, Hashtable<String,Object> columns){
+        Table table= DeserializeTable("src/main/resources/data/" + tableName + ".bin");
+        Vector<String> colNames=new Vector<String>();
+        for (Map.Entry<String, Object> e : columns.entrySet()){
+            colNames.add(e.getKey());
+    }
+        int max=0;
+        String indexPath ="";
+        int counter =0;
+    for (int i =0;i<table.indicies.size();i++){
+        String[] tokens =table.indicies.get(i).split("_");
+         counter=0;
+        for(int j=2; j<tokens.length;j++){
+            String key = tokens[j];
+            if(j==tokens.length-1)
+                key=tokens[j].substring(0,tokens[j].length()-5);
+            for(int k=0;k<colNames.size();k++){
+              if(key.equals(colNames.get(k))){
+                  counter++;
+
+              }
+
+            }
+
+        }
+        if(counter>= max){
+            max = counter ;
+            indexPath=table.indicies.get(i);
+        }
+
+    }
+    if (max==0)
+        return null;
+    else
+        return indexPath;
+
+    }
+
+   public static boolean containsKey (String[] array,String key){
+        for(int i=0;i< array.length;i++)
+            if (array[i].equals(key))
+                return true ;
+        return false;
+   }
+
+    public static void deleteUsingIndex(Index index,Hashtable<String,Object>  existingCol,Hashtable<String,Object> nonExistingCol,int currentDimension,Vector data) {
+        String dimensionName = index.colNames[currentDimension];
+        Vector currentRanges = index.ranges.get(dimensionName);
+        Object currentValue = existingCol.get(dimensionName);
+        String bucketPath = null;
+        int i = 0;//to get the range index
+        // check if it is the last dimension or not
+        if (index.colNames.length - 1 == currentDimension) {
+
+            if (currentValue == null) {
+                for (int j = 0; j < 10; j++) {
+                    bucketPath = (String) data.get(j);
+                    if (bucketPath == null)
+                        return;
+                    else
+                        deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+
+                }
+
+            } else {
+                for (i = 0; i < currentRanges.size(); i++) {
+                    if (i == currentRanges.size() - 1) {
+                        bucketPath = (String) data.get(i);
+                        if (bucketPath == null)
+                            return;
+                        else
+                            deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+                    } else {
+                        String type = getType(dimensionName);
+                        if (type.equals("java.lang.String")) {
+                            Character c = currentValue.toString().charAt(0);
+                            Character range = (Character) currentRanges.get(i);
+                            if (c <= range) {
+                                bucketPath = (String) data.get(i);
+                                deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+                                break;
+                            }
+                        } else if (type.equals("java.lang.Integer")) {
+                            if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                                bucketPath = (String) data.get(i);
+                                deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+                                break;
+                            }
+                        } else if (type.equals("java.lang.Double")) {
+                            if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                                bucketPath = (String) data.get(i);
+                                deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+                                break;
+                            }
+                        } else if (type.equals("java.util.Date")) {
+                            String currDate = ((Date) currentValue).toString();
+                            int numcurDate = Integer.parseInt(currDate);
+                            int rangeDate = Integer.parseInt(currentRanges.get(i).toString());
+                            if (numcurDate <= rangeDate) {
+                                bucketPath = (String) data.get(i);
+                                deleteFromBucket(bucketPath, nonExistingCol,existingCol);
+                                break;
+                            }
+                        } else {
+                            try {
+                                throw new DBAppException("WRONG DATATYPE");
+                            } catch (DBAppException e) {
+                                System.out.println(e.getMessage());
+                            }
+                        }
+
+
+                    }
+
+
+                }
+            }
+        }
+                else{
+            int k=-1;
+
+            for (i = 0; i < currentRanges.size(); i++) {
+                if (i == currentRanges.size() - 1) {
+                    k=i;
+                    break;
+                } else {
+                    String type = getType(dimensionName);
+                    if (type.equals("java.lang.String")) {
+                        Character c = currentValue.toString().charAt(0);
+                        Character range = (Character) currentRanges.get(i);
+                        if (c <= range) {
+                            k=i;
+                            break;
+                        }
+                    } else if (type.equals("java.lang.Integer")) {
+                        if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                            k=i;
+                            break;
+                        }
+                    } else if (type.equals("java.lang.Double")) {
+                        if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                            k=i;
+                            break;
+                        }
+                    } else if (type.equals("java.util.Date")) {
+                        String currDate = ((Date) currentValue).toString();
+                        int numcurDate = Integer.parseInt(currDate);
+                        int rangeDate = Integer.parseInt(currentRanges.get(i).toString());
+                        if (numcurDate <= rangeDate) {
+                            k=i;
+                            break;
+                        }
+                    } else {
+                        try {
+                            throw new DBAppException("WRONG DATATYPE");
+                        } catch (DBAppException e) {
+                            System.out.println(e.getMessage());
+                        }
+                    }
+
+
+                }
+            }
+             deleteUsingIndex(index,existingCol,nonExistingCol,currentDimension+1,(Vector) data.get(k));
+
+
+
+
+
+
+
+
+        }
+
+
+            }
+
+
+        public static void  deleteFromBucket(String bucketPath,Hashtable<String,Object> nonExistingCol,Hashtable<String,Object> existingCol){
+        Bucket bucket=Bucket.DeserializeBucket(bucketPath);
+
+
+
+
+        }
+
+
+
 
     public static void main (String[] args) throws DBAppException, IOException, ParseException {
         String [] minDate = "22-7-1999".split("-");
