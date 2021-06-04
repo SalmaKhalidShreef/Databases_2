@@ -1178,6 +1178,20 @@ public class DBApp implements DBAppInterface {
             }}
 
          else if (type.equals("java.lang.String")){
+             if(!Character.isAlphabetic(max.charAt(0))){
+                 int range = (int)Math.ceil(((Integer.parseInt(max.replace("-",""))-Integer.parseInt(min.replace("-","")))+1)/10.0);
+                 Vector r =  index.ranges.get(colName);
+                 r.add(min);
+                 for(int i=1;i<10;i++){
+                     int prevMin =Integer.parseInt(String.valueOf(r.get(i-1).toString().replace("-","")));
+                     int currMin = prevMin+range;
+                     if(currMin>Integer.parseInt(max.replace("-",""))){
+                         r.add(max);
+                     }
+                     else
+                         r.add(String.valueOf(currMin));
+                 }}
+             else{
             int range = (int)Math.ceil(((max.toLowerCase(Locale.ROOT).charAt(0))-(min.toLowerCase(Locale.ROOT).charAt(0))+1)/10.0);
             Vector r =  index.ranges.get(colName);
             r.add((int)min.toLowerCase(Locale.ROOT).charAt(0));
@@ -1188,7 +1202,7 @@ public class DBApp implements DBAppInterface {
                     r.add((int)max.toLowerCase(Locale.ROOT).charAt(0));
                 else
                 r.add(String.valueOf(currMin));
-            }}
+            }}}
     else  if (type.equals("java.util.Date")){
             String minDate = min.replace("-","");
             String maxDate = max.replace("-","");
@@ -1527,26 +1541,39 @@ public static boolean contains (String [] arr, String s ){
                 Vector ranges=index.ranges.get(columnNames[i]);// the vector of MIN values  of columnNames[i]
                 for(int g=0;g<ranges.size();g++){       // to know which index of the cell we should insert in
                     String type=getType(value);
+                    System.out.println(value);
                     if(type.equals("java.lang.String")){
-                        Character c = value.toString().charAt(0);
-                        Character range = (Character) ranges.get(g);
+                        if(!Character.isAlphabetic(value.toString().charAt(0))){
+                            int numericRange = Integer.parseInt(ranges.get(g).toString().replace("-",""));
+                            int numericValue = Integer.parseInt(value.toString().replace("-",""));
+                            if(numericValue<=numericRange){
+                                indexes[i]=g-1;
+                            }
+                        }
+                        else{
+                        int c = Character.getNumericValue(value.toString().charAt(0));
+                        System.out.println(ranges.get(g));
+                        int range =  Integer.parseInt(ranges.get(g).toString());
                         if (c<=range) {
                             indexes[i]=g-1;
-                        }
+                        }}
                     }
                     else if(type.equals("java.lang.Integer")){
-                        if (((Integer)value).compareTo((Integer)ranges.get(g)) < 0) {
+                        if (Integer.parseInt(value.toString())<(Integer.parseInt(ranges.get(g).toString()))) {
                             indexes[i]=g-1;
                         }
                     }
                     else if(type.equals("java.lang.Double")){
-                        if (((Double)value).compareTo((Double)ranges.get(g)) < 0) {
+                        if ((Double.parseDouble(value.toString()) <(Double.parseDouble(ranges.get(g).toString())))) {
                             indexes[i]=g-1;
                         }
                     }
                     else if(type.equals("java.util.Date")){
-                        String currDate = ((Date) value).toString();
-                        int numcurDate = Integer.parseInt(currDate);
+                        Date currDate = (Date) value;
+                        DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+                        String strDate = dateFormat.format(currDate);
+
+                        int numcurDate = Integer.parseInt(strDate.replace("-",""));
                         int rangeDate = Integer.parseInt(ranges.get(g).toString());
                         if (numcurDate<=rangeDate) {
                             indexes[i]=g-1;
