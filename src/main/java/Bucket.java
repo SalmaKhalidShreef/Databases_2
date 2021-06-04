@@ -7,8 +7,8 @@ public class Bucket implements Serializable {
     HashMap<String, Vector<String>> list ;
     String BucketId;
     Bucket overFlow ;
-    Index index;
-    public Bucket(String id , Index i) {
+    String indexPath;
+    public Bucket(String id , String i) {
         noOfEntries= 0;
         try {
             max = readConfig("MaximumKeysCountinIndexBucket");
@@ -17,7 +17,7 @@ public class Bucket implements Serializable {
         }
         BucketId=id;
         list = new HashMap<String,Vector<String>>();
-        this.index=i;
+        this.indexPath=i;
     }
     public Vector<String> search(String s){
         Vector<String> path = new Vector<String>();
