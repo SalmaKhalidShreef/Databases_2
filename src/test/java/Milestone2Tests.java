@@ -151,7 +151,8 @@ public class Milestone2Tests {
         arrSQLTerms[1]._strTableName = "students";
         arrSQLTerms[1]._strColumnName= "gpa";
         arrSQLTerms[1]._strOperator = "=";
-        arrSQLTerms[1]._objValue = new Double(0.7);
+        Double value = 0.7;
+        arrSQLTerms[1]._objValue = value;
 
         String[]strarrOperators = new String[1];
         strarrOperators[0] = "AND";
