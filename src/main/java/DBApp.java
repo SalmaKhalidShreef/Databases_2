@@ -6,7 +6,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-
+import java.util.Map;
 ///Final
 public class DBApp implements DBAppInterface {
 
@@ -16,6 +16,13 @@ public class DBApp implements DBAppInterface {
     Vector<Index> indexes;
     public Vector<SQLTerm> conditionsOfIndexedColumns;
     private static final String FOLDER ="src/main/resources/data";
+
+
+    public DBApp (){
+        tableList= new Vector<String>();
+        tableNames = new Vector<String>();
+
+    }
 
     @Override
     public void init() {
@@ -325,7 +332,7 @@ public class DBApp implements DBAppInterface {
                             //end of else -Iam not below max rows-
                         }
                     }
-                }
+                    }
             }//end of loop
             if (k >= target.pagesPath.size()) {
                 String path = target.pagesPath.get(target.pagesPath.size() - 1);
@@ -349,383 +356,198 @@ public class DBApp implements DBAppInterface {
             }
 
         }    }
-    public static void insertIntoPage (Page currentPage, Hashtable colNameValue, String currentClustering, Table
-            target,int pageIndex) throws DBAppException {
-        int x = 0;
-        int idx = Collections.binarySearch(currentPage.clusterings, colNameValue.get(target.clusteringKey).toString());
-        if(currentPage ==null)
+        public static void insertIntoPage (Page currentPage, Hashtable colNameValue, String currentClustering, Table
+        target,int pageIndex) throws DBAppException {
+            int x = 0;
+            int idx = Collections.binarySearch(currentPage.clusterings, colNameValue.get(target.clusteringKey).toString());
+            if(currentPage ==null)
             System.out.println("ANA HENA AHO");
-        if(currentPage.clusterings.size()!=currentPage.list.size()){ System.out.println(currentPage.clusterings.size() +"clusterings");
+           if(currentPage.clusterings.size()!=currentPage.list.size()){ System.out.println(currentPage.clusterings.size() +"clusterings");
             System.out.println(currentPage.list.size()+"list");
 
-            System.out.println(currentPage.clusterings.toString());
-            System.out.println(currentPage.list.toString());}
+           System.out.println(currentPage.clusterings.toString());
+           System.out.println(currentPage.list.toString());}
 
-        x = -1 - idx;
-        if (x > 250){
-            throw  new DBAppException("Ana bayez xX");
-        }
-        currentPage.list.insertElementAt(colNameValue, x);
-        //inserting the clustering key at the clusterings vector
-        currentPage.clusterings.insertElementAt( colNameValue.get(target.clusteringKey.toString()).toString(), x);
-
-        if (currentClustering.compareTo(target.min.get(pageIndex).toString()) < 0) {
-            target.min.set(pageIndex, currentClustering);
-        }
-        if (currentClustering.compareTo(target.max.get(pageIndex).toString()) > 0)
-            target.max.set(pageIndex, currentClustering);
-        serializePage(currentPage);
-        serializeTable(target);
-    }
-
-
-    @Override
-    public void updateTable (String tableName, String
-            clusteringKeyValue, Hashtable < String, Object > columnNameValue) throws DBAppException {
-
-        colNotFound(tableName, columnNameValue);
-        try {
-            checkDataTypes(tableName, columnNameValue);
-            int i;
-
-            // String s="s/"
-            Boolean flag = false;
-
-            Table table = null;
-            Vector<String> tableList = (Vector<String>) deserializeVector("src/main/resources/data/tablesList.bin");
-            for (i = 0; i < tableList.size(); i++) {
-                table = DeserializeTable("src/main/resources/data/" + tableName + ".bin");
-                if (table.tableName.equals(tableName)) {
-                    if (columnNameValue.get(table.clusteringKey) != null)
-                        throw new DBAppException("You can't update clustering key !");
-                    flag = true;
-                    break;
-                }
-
-
-            }
-            if (flag) {
-                Boolean flagfoundpage = false;
-                int idx = -1;
-                Page page;
-                int j;
-                for (j = 0; j < table.min.size(); j++) {
-                    if (clusteringKeyValue.compareTo((table.min.get(j)).toString()) >= 0 &&
-                            clusteringKeyValue.compareTo((table.max.get(j)).toString()) <= 0) {
-                        page = deserialize("src/main/resources/data" + "/" + table.tableName + (j + 1) + ".bin");
-                        //idx = Collections.binarySearch(page.clusterings,clusteringKeyValue);
-                        if (!page.clusterings.contains(clusteringKeyValue)) {
-                            if (page.overflowPage != null) {
-                                Page overflow = deserialize("src/main/resources/data" + "/" + table.tableName + (j + 1) + "Over" + ".bin");
-                                if (overflow.clusterings.contains(clusteringKeyValue)) {
-                                    String s = (String) (columnNameValue.keySet().toArray())[0];
-                                    columnNameValue.replace(s, columnNameValue.get(s));
-                                    flagfoundpage = true;
-                                    System.out.println("updating in overFloe");
-
-                                    break;
-                                }
-                            }
-                        } else if (page.clusterings.contains(clusteringKeyValue)) {
-                            String s = (String) (columnNameValue.keySet().toArray())[0];
-                            columnNameValue.replace(s, columnNameValue.get(s));
-                            flagfoundpage = true;
-                        }
-
-                        serializePage(page);
-                        break;
+            x = -1 - idx;
+                if (x > 250){
+                    throw  new DBAppException("Ana bayez xX");
                     }
-                }
-                if (!flagfoundpage) {
-                    throw new DBAppException("Row not found");
-                }
+                currentPage.list.insertElementAt(colNameValue, x);
+                //inserting the clustering key at the clusterings vector
+                currentPage.clusterings.insertElementAt( colNameValue.get(target.clusteringKey.toString()).toString(), x);
 
-            } else {
-                throw new DBAppException("The table does not exist");
-            }
-            serializeTable(table);
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
+                if (currentClustering.compareTo(target.min.get(pageIndex).toString()) < 0) {
+                    target.min.set(pageIndex, currentClustering);
+                }
+                if (currentClustering.compareTo(target.max.get(pageIndex).toString()) > 0)
+                    target.max.set(pageIndex, currentClustering);
+                serializePage(currentPage);
+                serializeTable(target);
         }
 
-    }
 
-    @Override
-    public void deleteFromTable (String tableName, Hashtable < String, Object > columnNameValue) throws
-            DBAppException {
-        // colNotFound(tableName,columnNameValue);
-        Page p = getPage(tableName, columnNameValue);
-        if (p != null) {
+        @Override
+        public void updateTable (String tableName, String
+        clusteringKeyValue, Hashtable < String, Object > columnNameValue) throws DBAppException {
+
+            colNotFound(tableName, columnNameValue);
             try {
-                Table t = DeserializeTable("src/main/resources/data/" + tableName + ".bin");
-                int rowIdx = getRow(p, columnNameValue, tableName);
-                String cluster = p.list.get(rowIdx).get(t.clusteringKey).toString();
-                p.list.removeElementAt(rowIdx);
-                p.clusterings.removeElementAt(rowIdx);
-                char pid = p.PageID.charAt(tableName.length());
-                int idx = Character.getNumericValue(pid);
-                if (cluster.equals(t.min.get(idx))) {
-                    t.min.set(idx, p.clusterings.get(0));
-                }
+                checkDataTypes(tableName, columnNameValue);
+                int i;
 
-                if (cluster.equals(t.max.get(idx))) {
-                    t.max.removeElementAt(idx);
-                    t.max.set(idx, p.clusterings.get(p.clusterings.size() - 1));
-                }
-                serializeTable(t);
-            } catch (Exception x) {
-                System.out.println(x.getMessage());
-            }
-        }
-    }
+                // String s="s/"
+                Boolean flag = false;
 
-    @Override
-    public Iterator selectFromTable (SQLTerm[] sqlTerms, String[] arrayOperators) throws DBAppException {
-
-        String tableName = sqlTerms[0]._strTableName; // table name I'm doing conditions on
-        String[] columns = new String[sqlTerms.length]; // columns that is included in the condition array(sqlTerms)
-        int noOfConditions = sqlTerms.length;
-        //getting the column names that are in the sqlterms array
-        for (int i = 0; i<sqlTerms.length; i++){
-            columns[i] = sqlTerms[i]._strColumnName;
-        }
-        //reading the metadata file to check if the table has an index or not
-        String line = "";
-        String splitBy = ",";
-        int i =0;
-        Vector<String[]> Data =new Vector<String[]>();
-        try{
-            BufferedReader br = new BufferedReader(new FileReader("src/main/resources/metadata.csv"));
-            while ((line = br.readLine()) != null)   //returns a Boolean value
-            {
-                String[] array= line.split(splitBy);
-                Data.add(array);
-
-            }
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-        // end of reading
-
-
-        Vector<String> indexedColumns = new Vector<String>();
-        Vector<String> nonIndexedColumns = new Vector<String>();
-
-        //checking which columns are indexed and which are not (from the metadata)
-        Vector<SQLTerm> conditionsOfNonIndexedColumns=new Vector<SQLTerm>();
-        conditionsOfIndexedColumns=new Vector<SQLTerm>();
-
-        for (int j = 0; j<columns.length; j++){
-            for (int k = 0; k<Data.size();k++){
-                if ((Data.get(k)[0]).equals(tableName)){
-                    if (Data.get(k)[1].equals(columns[j])){
-                        if (Data.get(k)[4].equals("TRUE")) {
-                            indexedColumns.add(columns[j]);
-                            for (int h = 0; h < sqlTerms.length; h++) {
-                                if (sqlTerms[h]._strColumnName.equals(columns[j])) {
-                                    conditionsOfIndexedColumns.add(sqlTerms[h]);
-                                    break;
-                                }
-                            }
-                        }
-                        else
-                            nonIndexedColumns.add(columns[j]);
-                        for(int h=0;h<sqlTerms.length;h++){
-                            if(sqlTerms[h]._strColumnName.equals(columns[j])){
-                                conditionsOfNonIndexedColumns.add(sqlTerms[h]);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        // end of checking
-
-
-
-        //Which Index Should I Use?
-        Index index = returnAppropriateIndex(tableName, indexedColumns);
-        if (index!=null) {
-            SQLTerm[] arrayToBeInsertedIntoRecursiveMethod = new SQLTerm[conditionsOfIndexedColumns.size()];
-            String[] colsOfIndex = index.colNames;
-            for (int n = 0; n < index.colNames.length; n++) {
-                SQLTerm temp = new SQLTerm();
-                for (int n1 = 0; n1 < conditionsOfIndexedColumns.size(); n1++) {
-                    if (conditionsOfIndexedColumns.get(n1)._strColumnName.equals(colsOfIndex[n])) {
-                        temp = conditionsOfIndexedColumns.get(n1);
+                Table table = null;
+                Vector<String> tableList = (Vector<String>) deserializeVector("src/main/resources/data/tablesList.bin");
+                for (i = 0; i < tableList.size(); i++) {
+                    table = DeserializeTable("src/main/resources/data/" + tableName + ".bin");
+                    if (table.tableName.equals(tableName)) {
+                        if (columnNameValue.get(table.clusteringKey) != null)
+                            throw new DBAppException("You can't update clustering key !");
+                        flag = true;
                         break;
                     }
+
+
                 }
-                arrayToBeInsertedIntoRecursiveMethod[n] = temp;
-            }
-            Vector<String> vectorToBeInsertedIntoRecursiveMethod = new Vector<String>();
-            Vector<String> bucketsPaths = recursiveMethod(arrayToBeInsertedIntoRecursiveMethod, index, index.grid, vectorToBeInsertedIntoRecursiveMethod);
-            Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> rowsOfIndexedConditions = loopBuckets(bucketsPaths, arrayToBeInsertedIntoRecursiveMethod);
-            // unknown function
-            String[] indexedCols;
-            Hashtable<String, String[]> IndexColsForOneIndex = new Hashtable<String, String[]>();
-            for (int i2 = 0; i2 < indexes.size(); i++) {
-                if (tableName.equals(indexes.get(i2).tableName)) {
-                    indexedCols = intersection(indexes.get(i2).colNames, columns);
-                    IndexColsForOneIndex.put(indexes.get(i2).indexId, indexedCols);
+                if (flag) {
+                    Boolean flagfoundpage = false;
+                    int idx = -1;
+                    Page page;
+                    int j;
+                    for (j = 0; j < table.min.size(); j++) {
+                        if (clusteringKeyValue.compareTo((table.min.get(j)).toString()) >= 0 &&
+                                clusteringKeyValue.compareTo((table.max.get(j)).toString()) <= 0) {
+                            page = deserialize("src/main/resources/data" + "/" + table.tableName + (j + 1) + ".bin");
+                            //idx = Collections.binarySearch(page.clusterings,clusteringKeyValue);
+                            if (!page.clusterings.contains(clusteringKeyValue)) {
+                                if (page.overflowPage != null) {
+                                    Page overflow = deserialize("src/main/resources/data" + "/" + table.tableName + (j + 1) + "Over" + ".bin");
+                                    if (overflow.clusterings.contains(clusteringKeyValue)) {
+                                        String s = (String) (columnNameValue.keySet().toArray())[0];
+                                        columnNameValue.replace(s, columnNameValue.get(s));
+                                        flagfoundpage = true;
+                                        System.out.println("updating in overFloe");
+
+                                        break;
+                                    }
+                                }
+                            } else if (page.clusterings.contains(clusteringKeyValue)) {
+                                String s = (String) (columnNameValue.keySet().toArray())[0];
+                                columnNameValue.replace(s, columnNameValue.get(s));
+                                flagfoundpage = true;
+                            }
+
+                            serializePage(page);
+                            break;
+                        }
+                    }
+                    if (!flagfoundpage) {
+                        throw new DBAppException("Row not found");
+                    }
+
+                } else {
+                    throw new DBAppException("The table does not exist");
                 }
+                serializeTable(table);
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
             }
-            //end
 
-            // condition on columns have index
-            for (int i1 = 0; i1 < noOfConditions; i1++) {
-                if (indexedColumns.contains(sqlTerms[i1]._strColumnName)) {
-                    //searchInIndex(sqlTerms[i1]);
+        }
+
+        @Override
+        public void deleteFromTable (String tableName, Hashtable < String, Object > columnNameValue) throws
+        DBAppException {
+
+            String indexPath = getIndex(tableName, columnNameValue);
+            if (indexPath == null) {
+                Page p = getPage(tableName, columnNameValue);
+                if (p != null) {
+                    try {
+                        Table t = DeserializeTable("src/main/resources/data/" + tableName + ".bin");
+                        int rowIdx = getRow(p, columnNameValue, tableName);
+                        String cluster = p.list.get(rowIdx).get(t.clusteringKey).toString();
+                        p.list.removeElementAt(rowIdx);
+                        p.clusterings.removeElementAt(rowIdx);
+                        char pid = p.PageID.charAt(tableName.length());
+                        int idx = Character.getNumericValue(pid);
+                        if (cluster.equals(t.min.get(idx))) {
+                            t.min.set(idx, p.clusterings.get(0));
+                        }
+
+                        if (cluster.equals(t.max.get(idx))) {
+                            t.max.removeElementAt(idx);
+                            t.max.set(idx, p.clusterings.get(p.clusterings.size() - 1));
+                        }
+                        serializeTable(t);
+                    } catch (Exception x) {
+                        System.out.println(x.getMessage());
+                    }
                 }
-            }
-            //end
-            SQLTerm[] conditions = new SQLTerm[conditionsOfNonIndexedColumns.size()];
+            }else {
+                // DELETING USING THE INDEX
+              Index index =  Index.DeserializeIndex(indexPath);
+              Hashtable<String,Object> existingCol =new Hashtable<String,Object>();
+              Hashtable<String,Object> nonExistingCol =new Hashtable<String,Object>();
 
-            Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> rows_resulted_from_nonindexed_columns = loopPagesWithCondition(tableName, conditionsOfNonIndexedColumns.toArray(conditions));
+              // identifying existing cols in the delete request compared to index columns
+              for (int k=0; k<index.colNames.length;k++){
+                  if (columnNameValue.containsKey(index.colNames[k]))
+                      existingCol.put(index.colNames[k],columnNameValue.get(index.colNames[k]));
+              }
 
-            Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> hashtableOfAllConditions = new Hashtable<SQLTerm, Vector<Hashtable<String, Object>>>();
-            hashtableOfAllConditions.putAll(rows_resulted_from_nonindexed_columns);
-            hashtableOfAllConditions.putAll(rowsOfIndexedConditions);
+                // identifying nonExisting cols in the index compared to the delete request
 
-            Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> result = new Hashtable<SQLTerm, Vector<Hashtable<String, Object>>>();
-            for (int m = 0; m < sqlTerms.length; m++) {
-                result.put(sqlTerms[m], hashtableOfAllConditions.get(sqlTerms[i]));
-            }
-
-            Vector<Hashtable<String, Object>> finalResult = loopOnOperators(result, arrayOperators);
-            Iterator finalFinalResult = finalResult.iterator();
-            return finalFinalResult;
-        }
-  return null;
-    }
-
-    public Index returnAppropriateIndex(String tableName, Vector<String> indexedColumns){
-        for (int k = 0; k<indexes.size(); k++){
-            if(indexes.get(k).tableName.equals(tableName)){
-                if(indexes.get(k).colNames.equals(indexedColumns)){
-                    return indexes.get(k);
+                for (Map.Entry<String, Object> e : columnNameValue.entrySet()){
+                    if (!containsKey(index.colNames,e.getKey()))
+                        nonExistingCol.put(e.getKey(),e.getValue());
                 }
+
+
+                deleteUsingIndex(index,existingCol,nonExistingCol,0,index.grid,columnNameValue);
+
+
+
             }
         }
-        return null;
-    }
-    public Vector<Hashtable<String,Object>> loopOnOperators(Hashtable<SQLTerm,Vector<Hashtable<String, Object>>> cons, String[] strarrOperators){
-        Set<SQLTerm> keys = cons.keySet();
-        SQLTerm[] keysArray = keys.toArray(new SQLTerm[keys.size()]);
-        Vector<Hashtable<String,Object>> result = new Vector<Hashtable<String,Object>>();
-        for (int i = 0; i<strarrOperators.length; i++){
-            if(i==0){
-                result = operatorMethod(cons.get(keysArray[i]),cons.get(keysArray[i+1]),strarrOperators[i]);
+
+        //@Override
+       // public Iterator selectFromTable (SQLTerm[]sqlTerms, String[]arrayOperators) throws DBAppException {
+          //  return null;
+       // }
+
+        public static String getAttributes (String tableName, String
+        clusteringKey, Hashtable < String, String > colNameType,
+                Hashtable < String, String > colNameMin, Hashtable < String, String > colNameMax){
+            String columnName = "";
+            String columnType = "";
+            String columnMin = "";
+            String columnMax = "";
+            String clustering;
+            String result = "";
+            Set<String> columns = colNameType.keySet();
+            for (String k : columns) {
+
+                columnName = k;
+                columnType = colNameType.get(k);
+                columnMax = colNameMax.get(k);
+                columnMin = colNameMin.get(k);
+                if (clusteringKey.equals(k))
+                    clustering = "TRUE";
+                else
+                    clustering = "FALSE";
+
+                result = result + '\n' + tableName + "," + columnName + "," + columnType + "," + clustering + "," + "FALSE" + ","
+                        + columnMin + "," + columnMax;
+
             }
-            else{
-                result = operatorMethod(result, cons.get(keysArray[i+1]),strarrOperators[i]);
-            }
-        }
-        return result;
-    }
-    ///////////////////////
-    public Vector<Hashtable<String,Object>> operatorMethod(Vector<Hashtable<String,Object>> v1, Vector<Hashtable<String,Object>> v2, String operator){
-        Vector<Hashtable<String,Object>> result = new Vector<Hashtable<String,Object>>();
-        switch (operator){
-            case "OR": result = OR(v1,v2); break;
 
-            case "AND": result = AND(v1,v2); break;
+            return result;
 
-            case "XOR": result = XOR(v1,v2); break;
-
-            default: break;
-        }
-
-        return result;
-    }
-
-
-    public Vector<Hashtable<String,Object>> OR(Vector<Hashtable<String,Object>> v1, Vector<Hashtable<String,Object>> v2){
-        Vector<Hashtable<String,Object>> result = new Vector<Hashtable<String,Object>>();
-        HashSet<Hashtable<String,Object>> set = new HashSet<Hashtable<String,Object>>();
-        set.addAll(v1);
-        set.addAll(v2);
-        result.addAll(set);
-        return result;
-    }
-
-    public Vector<Hashtable<String,Object>> AND(Vector<Hashtable<String,Object>> v1, Vector<Hashtable<String,Object>> v2){
-        Vector<Hashtable<String,Object>> result = new Vector<Hashtable<String,Object>>();
-        HashSet<Hashtable<String,Object>> set = new HashSet<Hashtable<String,Object>>();
-        set.addAll(v1);
-        set.retainAll(v2);
-        result.addAll(set);
-        return result;
-    }
-
-
-    public Vector<Hashtable<String, Object>> XOR(Vector<Hashtable<String, Object>> v1, Vector<Hashtable<String, Object>> v2){
-        Vector<Hashtable<String,Object>> result = new Vector<Hashtable<String,Object>>();
-        HashSet<Hashtable<String,Object>> set = new HashSet<Hashtable<String,Object>>();
-        set.addAll(v1);
-        set.addAll(v2);
-        v1.retainAll(v2); //a now has the intersection of a and b
-        set.removeAll(v1);
-        result.addAll(set);
-        return result;
-    }
-
-    ////////////////////////////////////
-
-    public String[] intersection(String[] s1, String[] s2){
-
-        HashSet<String> set = new HashSet<>();
-
-        set.addAll(Arrays.asList(s1));
-
-        set.retainAll(Arrays.asList(s2));
-
-        System.out.println(set);
-
-        //convert to array
-        String[] intersection = {};
-        return set.toArray(intersection);
-
-    }
-
-
-    public static Vector <Hashtable<String,Object>> nonIndexedColRows(String columnName, Vector<SQLTerm> conditions) {
-        Vector<Hashtable<String, Object>> result = new Vector<Hashtable<String, Object>>();
-        return null;
-    }
-    public static String getAttributes (String tableName, String
-            clusteringKey, Hashtable < String, String > colNameType,
-                                        Hashtable < String, String > colNameMin, Hashtable < String, String > colNameMax){
-        String columnName = "";
-        String columnType = "";
-        String columnMin = "";
-        String columnMax = "";
-        String clustering;
-        String result = "";
-        Set<String> columns = colNameType.keySet();
-        for (String k : columns) {
-
-            columnName = k;
-            columnType = colNameType.get(k);
-            columnMax = colNameMax.get(k);
-            columnMin = colNameMin.get(k);
-            if (clusteringKey.equals(k))
-                clustering = "TRUE";
-            else
-                clustering = "FALSE";
-
-            result = result + '\n' + tableName + "," + columnName + "," + columnType + "," + clustering + "," + "FALSE" + ","
-                    + columnMin + "," + columnMax;
 
         }
-
-        return result;
-
-
-    }
 
 
     public static void checkDataTypes (String tableName, Hashtable<String, Object> colNameValue) throws DBAppException, ParseException {
@@ -982,7 +804,7 @@ public class DBApp implements DBAppInterface {
         }
 
         return p;}
-    public int getRow (Page p , Hashtable<String,Object> colNameValue,String clusteringKey) throws DBAppException {
+    public static int getRow(Page p, Hashtable<String, Object> colNameValue, String clusteringKey) throws DBAppException {
         int idx=0;
         //table doesnt exist
         //I have the primary key and can search with it
@@ -1225,6 +1047,7 @@ public class DBApp implements DBAppInterface {
 
 
 
+
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     public static void  buildArray (int level, Vector array){
         if (level==1)
@@ -1259,7 +1082,7 @@ public class DBApp implements DBAppInterface {
         for (int k = 0; k < attributes.length; k++) {
             for (int j = 0; j < Data.size(); j++) {
                 if (Data.get(j)[0].equals(tableName) && Data.get(j)[1].equals(attributes[k])) {
-                    Data.get(j)[4]="True";
+                   Data.get(j)[4]="True";
 
                 }
             }
@@ -1268,7 +1091,7 @@ public class DBApp implements DBAppInterface {
         for (int m=0;m<Data.size();m++){
             for (int n =0;n<Data.get(m).length;n++){
                 if(n==Data.get(m).length-1)
-                    result+=Data.get(m)[n];
+                result+=Data.get(m)[n];
                 else
                     result+=Data.get(m)[n]+",";
 
@@ -1329,32 +1152,32 @@ public class DBApp implements DBAppInterface {
     public static void createRangeList (Index index ,String colName, String type, String min,String max){
         if (type.equals("java.lang.Integer")){
             int range = (int)Math.ceil(((Integer.parseInt(max)-Integer.parseInt(min))+1)/10.0);
-            Vector r =  index.ranges.get(colName);
-            r.add(min);
-            for(int i=1;i<10;i++){
-                int prevMin =Integer.parseInt(String.valueOf(r.get(i-1)));
-                int currMin = prevMin+range;
+           Vector r =  index.ranges.get(colName);
+           r.add(min);
+           for(int i=1;i<10;i++){
+               int prevMin =Integer.parseInt(String.valueOf(r.get(i-1)));
+               int currMin = prevMin+range;
                 if(currMin>Integer.parseInt(max)){
                     r.add(max);
                 }
                 else
-                    r.add(String.valueOf(currMin));
-            }}
-        else if(type.equals("java.lang.Double")){
+               r.add(String.valueOf(currMin));
+           }}
+           else if(type.equals("java.lang.Double")){
             double range = Math.ceil(((Double.parseDouble(max)-Double.parseDouble(min))+1)/10.0);
             Vector r =  index.ranges.get(colName);
             r.add(min);
             for(int i=1;i<10;i++){
                 double prevMin =Double.parseDouble((String.valueOf(r.get(i-1))));
                 double currMin = prevMin+range;
-                if(currMin>Integer.parseInt(max)){
+                if(currMin>Double.parseDouble(max)){
                     r.add(max);
                 }
                 else
-                    r.add(String.valueOf(currMin));
+                r.add(String.valueOf(currMin));
             }}
 
-        else if (type.equals("java.lang.String")){
+         else if (type.equals("java.lang.String")){
             int range = (int)Math.ceil(((max.toLowerCase(Locale.ROOT).charAt(0))-(min.toLowerCase(Locale.ROOT).charAt(0))+1)/10.0);
             Vector r =  index.ranges.get(colName);
             r.add((int)min.toLowerCase(Locale.ROOT).charAt(0));
@@ -1364,9 +1187,9 @@ public class DBApp implements DBAppInterface {
                 if(currMin>max.toLowerCase(Locale.ROOT).charAt(0))
                     r.add((int)max.toLowerCase(Locale.ROOT).charAt(0));
                 else
-                    r.add(String.valueOf(currMin));
+                r.add(String.valueOf(currMin));
             }}
-        else  if (type.equals("java.util.Date")){
+    else  if (type.equals("java.util.Date")){
             String minDate = min.replace("-","");
             String maxDate = max.replace("-","");
             int range = (int)Math.ceil(((Integer.parseInt(maxDate)-Integer.parseInt(minDate))+1)/10.0);
@@ -1449,9 +1272,9 @@ public class DBApp implements DBAppInterface {
             ///here curly prases of the method
             String s = index.indexId;
             //case no created bucket was found in the grid
-            bucket = null;
+             bucket = null;
             if (bucketPath == null) {
-                Bucket newBucket = new Bucket(index.indexId + dimensionValue, index);
+                Bucket newBucket = new Bucket(index.indexId + dimensionValue, "src/main/resources/data/"+index.indexId+".bin");
                 bucketPath = "src/main/resources/data/" + newBucket.BucketId + ".bin";
                 data.insertElementAt(bucketPath,i);
 
@@ -1480,7 +1303,7 @@ public class DBApp implements DBAppInterface {
                             a = new Vector<String>();
                             a.add(pagePath);
                             if (bucket.overFlow == null) {
-                                bucket.overFlow = new Bucket(bucket.BucketId + "Over", index);
+                                bucket.overFlow = new Bucket(bucket.BucketId + "Over", "src/main/resources/data/"+index.indexId+".bin");
                                 bucket.overFlow.list.put((String) colValues.get(m), a);
                             } else {
                                 a.add(pagePath);
@@ -1490,9 +1313,9 @@ public class DBApp implements DBAppInterface {
                         }
                     }
                     else{
-                        a.add(pagePath);
-                        bucket.list.put((String) colValues.get(m), a);
-                    }
+                    a.add(pagePath);
+                    bucket.list.put((String) colValues.get(m), a);
+                }
                 }
                 //use left most col if primary key doesn't exist
                 else {
@@ -1505,7 +1328,7 @@ public class DBApp implements DBAppInterface {
                             a = new Vector<String>();
                             a.add(pagePath);
                             if (bucket.overFlow == null) {
-                                bucket.overFlow = new Bucket(bucket.BucketId + "Over", index);
+                                bucket.overFlow = new Bucket(bucket.BucketId + "Over", "src/main/resources/data/"+index.indexId+".bin");
                                 bucket.overFlow.list.put((String) colValues.get(0), a);
                             } else {
                                 a.add(pagePath);
@@ -1525,7 +1348,6 @@ public class DBApp implements DBAppInterface {
             int k=-1;
 
             for (i = 0; i < currentRanges.size(); i++) {
-                //last bucket case
                 if (i == currentRanges.size() - 1) {
                     k=i;
                     dimensionValue += currentRanges.size() - 1;
@@ -1575,7 +1397,7 @@ public class DBApp implements DBAppInterface {
             insertIntoBucketUpdate(pagePath,colValues,index,currentDimension+1,(Vector) data.get(k),dimensionValue);
 
         }
-    }
+        }
 
 
    /* public void createIndex(String tableName, String[] columnNames) throws DBAppException {
@@ -1584,161 +1406,613 @@ public class DBApp implements DBAppInterface {
         loopPages(tableName,columnNames,index);
 
     }*/
+    public static void updateIndex(String pagePath , Hashtable<String,Object>colnamevalue , String tableName){
+        Table target = DeserializeTable("src/main/resources/data/"+tableName+".bin");
+        for(int i =0 ;i<target.indicies.size();i++ ){
+            Index index = Index.DeserializeIndex(target.indicies.get(i));
+            Vector colValues = new Vector<String>();
+            for(int j  =0 ; j<index.colNames.length;j++){
+                colValues.add(colnamevalue.get(index.colNames[i]));
+                insertIntoBucketUpdate (pagePath,colValues , index,0,index.grid,"");
+            }
+        }
 
-    // this method loops on page by page and returns a hashtable of each condition with the vector of rows that satisfy the condition in whole table
-    public Hashtable<SQLTerm,Vector<Hashtable<String, Object>>> loopPagesWithCondition(String tableName, SQLTerm [] conditions){
+    }
+    public static void insertIntoBucket (String pagePath, int[] indexes , Index index,int currentDimension,Vector data , Hashtable<String , Object> colnameval ) {
+        Bucket bucket =null;
+        String dimensionValue="";
+        if(currentDimension== index.colNames.length-1){
+            for(int i=0;i<indexes.length;i++)
+                dimensionValue+=indexes[i];
+            String bucketpath = (String)data.get(indexes[indexes.length-1]);
+            if(bucketpath == null) {
+                ///indexId + current dimension ??
+                bucket = new Bucket(index.indexId + dimensionValue, "src/main/resources/data/"+index.indexId+".bin");
+                data.insertElementAt("src/main/resources/data/" + bucket.BucketId + ".bin",indexes[indexes.length-1]);
+            }
+            else
+             bucket = Bucket.DeserializeBucket(bucketpath);
+            if(contains(index.colNames,index.clusteringKey)){
+                Vector a = bucket.list.get(colnameval.get(index.clusteringKey));
+                if(a== null){
+                    if(bucket.noOfEntries<bucket.max) {
+                        bucket.noOfEntries++;
+                        a = new Vector<String>();
+                    }
+                    else{
+                        a= new Vector<String>();
+                        a.add(pagePath);
+                        if(bucket.overFlow==null) {
+                            bucket.overFlow = new Bucket(bucket.BucketId + "Over", "src/main/resources/data/"+index.indexId+".bin");
+                            bucket.overFlow.list.put((String) colnameval.get(index.clusteringKey), a);
+                        }
+                        else{
+                            a.add(pagePath);
+                            bucket.list.put((String) colnameval.get(index.clusteringKey), a);
+                        }
+                    }
+
+                }
+                a.add(pagePath);
+                bucket.list.put((String) colnameval.get(index.clusteringKey), a);
+
+            }
+            //use left most col if primary key doesn't exist
+            else{
+                Vector a = bucket.list.get(colnameval.get(0));
+                if(a== null){
+                    if(bucket.noOfEntries<bucket.max) {
+                        a = new Vector<String>();
+                        bucket.noOfEntries++;
+                    }
+                    else{
+                        a= new Vector<String>();
+                        a.add(pagePath);
+                        if(bucket.overFlow==null) {
+                            bucket.overFlow = new Bucket(bucket.BucketId + "Over", "src/main/resources/data/"+index.indexId+".bin");
+                            bucket.overFlow.list.put((String) colnameval.get(0), a);
+                        }
+                        else{
+                            a.add(pagePath);
+                            bucket.list.put((String) colnameval.get(0), a);
+                        }
+                    }
+
+                }
+                a.add(pagePath);
+                bucket.list.put((String) colnameval.get(0), a);
+            }
+
+
+        }
+        else{
+            currentDimension++;
+            insertIntoBucket ( pagePath,indexes ,index,currentDimension, (Vector) data.get(indexes[currentDimension]), colnameval );
+
+            }
+        bucket.serializeBucket();
+    }
+public static boolean contains (String [] arr, String s ){
+        for(int i =0 ;i<arr.length;i++){
+            if(arr[i].equals(s))
+                return true;
+        }
+        return false;
+}
+        public static void loopPages(String tableName, String[] columnNames,Index index){
         Table table =DeserializeTable("src/main/resources/data/" + tableName + ".bin");
-        Hashtable<SQLTerm,Vector<Hashtable<String, Object>>> finalresult = new Hashtable<SQLTerm,Vector<Hashtable<String, Object>>>();
-        // each condition with the rows satisifying the condition
-        try {
-            for (int i = 0; i < conditions.length; i++) {
-                Vector<Hashtable<String, Object>> result = new Vector<Hashtable<String, Object>>();
-                // vector of rows satisfying this condition
-                Object Value = conditions[i]._objValue;
+        for(int i=0;i<table.pagesPath.size();i++){
+            loopPage(tableName, table.pagesPath.get(i), columnNames, index);
+            Page page=deserialize(table.pagesPath.get(i));
+            Page overflow=new Page("name");
+            if (page.overflowPage != null) {
 
-                for (int j = 0; j < table.pagesPath.size(); j++) {
-                    //result = loopPageWithCondition(tableName, i, table.pagesPath.get(i), columnNames[i], conditions);
-                    Page page=deserialize(table.pagesPath.get(j));
-                    String columnName=conditions[i]._strColumnName;
-                    for (int j1 = 0; j < page.clusterings.size(); j++) {
-                        Hashtable row = page.list.get(j);
-                        if (row.get(columnName) != null) {
-                            switch (conditions[i]._strOperator) {
-                                case "<": {
-                                    if ((Double) (row.get(columnName)) < (Double) Value)
-                                        result.add(row);
+                overflow = deserialize("src/main/resources/data" + "/" + tableName + i + "Over" + ".bin");
+                String p="src/main/resources/data" + "/" + tableName + i + "Over" + ".bin";  // overflow page path
+                loopPage(tableName, p, columnNames, index);
+            }
+            serializePage(overflow);
+            serializePage(page);
+        }
+        serializeTable(table);
+    }
+    public static void  loopPage(String tableName, String filepath, String[] columnNames,Index index)  {
+        Page page=deserialize(filepath);
+        for(int j=0;j<page.clusterings.size();j++){
+            // Hashtable<String,Integer> indexes=new Hashtable<String,Integer>();
+            int [] indexes =new int [columnNames.length];
+            Hashtable row=page.list.get(j);
+            for(int i=0;i<columnNames.length;i++){
+                Object value =row.get(columnNames[i]);
+                Vector ranges=index.ranges.get(columnNames[i]);// the vector of MIN values  of columnNames[i]
+                for(int g=0;g<ranges.size();g++){       // to know which index of the cell we should insert in
+                    String type=getType(value);
+                    if(type.equals("java.lang.String")){
+                        Character c = value.toString().charAt(0);
+                        Character range = (Character) ranges.get(g);
+                        if (c<=range) {
+                            indexes[i]=g-1;
+                        }
+                    }
+                    else if(type.equals("java.lang.Integer")){
+                        if (((Integer)value).compareTo((Integer)ranges.get(g)) < 0) {
+                            indexes[i]=g-1;
+                        }
+                    }
+                    else if(type.equals("java.lang.Double")){
+                        if (((Double)value).compareTo((Double)ranges.get(g)) < 0) {
+                            indexes[i]=g-1;
+                        }
+                    }
+                    else if(type.equals("java.util.Date")){
+                        String currDate = ((Date) value).toString();
+                        int numcurDate = Integer.parseInt(currDate);
+                        int rangeDate = Integer.parseInt(ranges.get(g).toString());
+                        if (numcurDate<=rangeDate) {
+                            indexes[i]=g-1;
+                        }
+                    }
+                    else
+                    {
+                        try {
+                            throw new DBAppException("WRONG DATATYPE");
+                        } catch (DBAppException e) {
+                            System.out.println(e.getMessage());
+                        }
+                    }
+
+
+
+                }
+
+            }
+            //public static void insertIntoBucket (String pagePath, int[] indexes , Index index,int currentDimension,Vector data , Hashtable<String , Object> colnameval ) {
+
+                insertIntoBucket(filepath,indexes,index,0,index.grid,row);
+           // KareemMethod(j,filepath,indexes,index);// j is the index of the row inside the page
+            //filepath is the path of the page containing the row
+            //indexes is the array  that contains the tuple that has the indexes
+            // that the row should be inserted in
+            //index is the Index you should insert the path in
+
+        }
+
+        serializePage(page);
+    }
+
+
+
+    public static String getIndex (String tableName, Hashtable<String,Object> columns){
+        Table table= DeserializeTable("src/main/resources/data/" + tableName + ".bin");
+        Vector<String> colNames=new Vector<String>();
+        for (Map.Entry<String, Object> e : columns.entrySet()){
+            colNames.add(e.getKey());
+    }
+        int max=0;
+        String indexPath ="";
+        int counter =0;
+    for (int i =0;i<table.indicies.size();i++){
+        String[] tokens =table.indicies.get(i).split("_");
+         counter=0;
+        for(int j=2; j<tokens.length;j++){
+            String key = tokens[j];
+            if(j==tokens.length-1)
+                key=tokens[j].substring(0,tokens[j].length()-5);
+            for(int k=0;k<colNames.size();k++){
+              if(key.equals(colNames.get(k))){
+                  counter++;
+
+              }
+
+            }
+
+        }
+        if(counter>= max){
+            max = counter ;
+            indexPath=table.indicies.get(i);
+        }
+
+    }
+    if (max==0)
+        return null;
+    else
+        return indexPath;
+
+    }
+
+   public static boolean containsKey (String[] array,String key){
+        for(int i=0;i< array.length;i++)
+            if (array[i].equals(key))
+                return true ;
+        return false;
+   }
+
+    public static void deleteUsingIndex(Index index,Hashtable<String,Object>  existingCol,Hashtable<String,Object> nonExistingCol,int currentDimension,Vector data , Hashtable<String,Object>colNameValue) throws DBAppException {
+        String dimensionName = index.colNames[currentDimension];
+        Vector currentRanges = index.ranges.get(dimensionName);
+        Object currentValue = existingCol.get(dimensionName);
+        String bucketPath = null;
+        int i = 0;//to get the range index
+        // check if it is the last dimension or not
+        if (index.colNames.length - 1 == currentDimension) {
+
+            if (currentValue == null) {
+                for (int j = 0; j < 10; j++) {
+                    bucketPath = (String) data.get(j);
+                    if (bucketPath == null)
+                        return;
+                    else
+                        deleteFromBucket(bucketPath,colNameValue);
+
+                }
+
+            } else {
+                for (i = 0; i < currentRanges.size(); i++) {
+                    if (i == currentRanges.size() - 1) {
+                        bucketPath = (String) data.get(i);
+                        if (bucketPath == null)
+                            return;
+                        else
+                            deleteFromBucket(bucketPath, colNameValue);
+                    } else {
+                        String type = getType(dimensionName);
+                        if (type.equals("java.lang.String")) {
+                            Character c = currentValue.toString().charAt(0);
+                            Character range = (Character) currentRanges.get(i);
+                            if (c <= range) {
+                                bucketPath = (String) data.get(i);
+                                deleteFromBucket(bucketPath, colNameValue);
+                                break;
+                            }
+                        } else if (type.equals("java.lang.Integer")) {
+                            if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                                bucketPath = (String) data.get(i);
+                                deleteFromBucket(bucketPath, colNameValue);
+                                break;
+                            }
+                        } else if (type.equals("java.lang.Double")) {
+                            if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                                bucketPath = (String) data.get(i);
+                                deleteFromBucket(bucketPath, colNameValue);
+                                break;
+                            }
+                        } else if (type.equals("java.util.Date")) {
+                            String currDate = ((Date) currentValue).toString();
+                            int numcurDate = Integer.parseInt(currDate);
+                            int rangeDate = Integer.parseInt(currentRanges.get(i).toString());
+                            if (numcurDate <= rangeDate) {
+                                bucketPath = (String) data.get(i);
+                                deleteFromBucket(bucketPath, colNameValue);
+                                break;
+                            }
+                        } else {
+                            try {
+                                throw new DBAppException("WRONG DATATYPE");
+                            } catch (DBAppException e) {
+                                System.out.println(e.getMessage());
+                            }
+                        }
+
+
+                    }
+
+
+                }
+            }
+        }
+                else{
+            int k=-1;
+
+            for (i = 0; i < currentRanges.size(); i++) {
+                if (i == currentRanges.size() - 1) {
+                    k=i;
+                    break;
+                } else {
+                    String type = getType(dimensionName);
+                    if (type.equals("java.lang.String")) {
+                        Character c = currentValue.toString().charAt(0);
+                        Character range = (Character) currentRanges.get(i);
+                        if (c <= range) {
+                            k=i;
+                            break;
+                        }
+                    } else if (type.equals("java.lang.Integer")) {
+                        if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                            k=i;
+                            break;
+                        }
+                    } else if (type.equals("java.lang.Double")) {
+                        if ((currentValue.toString()).compareTo(currentRanges.get(i).toString()) < 0) {
+                            k=i;
+                            break;
+                        }
+                    } else if (type.equals("java.util.Date")) {
+                        String currDate = ((Date) currentValue).toString();
+                        int numcurDate = Integer.parseInt(currDate);
+                        int rangeDate = Integer.parseInt(currentRanges.get(i).toString());
+                        if (numcurDate <= rangeDate) {
+                            k=i;
+                            break;
+                        }
+                    } else {
+                        try {
+                            throw new DBAppException("WRONG DATATYPE");
+                        } catch (DBAppException e) {
+                            System.out.println(e.getMessage());
+                        }
+                    }
+
+
+                }
+            }
+             deleteUsingIndex(index,existingCol,nonExistingCol,currentDimension+1,(Vector) data.get(k),colNameValue);
+
+
+
+
+
+
+
+
+        }
+
+
+            }
+
+
+        public static void  deleteFromBucket(String bucketPath,Hashtable<String,Object> columnNameValue) throws DBAppException {
+        Bucket bucket=Bucket.DeserializeBucket(bucketPath);
+        String indexingcol = null;
+        String indexPath = bucket.indexPath;
+        Index i =Index.DeserializeIndex(indexPath);
+        String key = i.clusteringKey;
+        String tableName = i.tableName;
+        int row =-1;
+        if(columnNameValue.containsKey(key)){
+            indexingcol=key;
+        }
+        else
+            indexingcol = i.colNames[0];
+            Vector<String> pagesList = bucket.list.get(indexingcol);
+
+            if(!columnNameValue.containsKey(indexingcol)){
+            pagesList = new Vector<>();
+            for(int j =0;j<bucket.list.size();j++){
+                for(int k =0;k<bucket.list.get(j).size();k++){
+                    if(!pagesList.contains(bucket.list.get(j).get(k)))
+                    pagesList.add(bucket.list.get(j).get(k));
+                }
+            }
+        }
+        Vector<String> deletedPages = new Vector<>();
+         for(int j=0;j<pagesList.size();j++){
+             Page p = deserialize(pagesList.get(j));
+              row = getRow(p,columnNameValue,key);
+             if(row!=-1){
+                 p.list.removeElementAt(row);
+                 deletedPages.add(pagesList.get(j));
+             }
+             serializePage(p);
+         }
+         for(int j=0;j<deletedPages.size();j++){
+             if(pagesList.contains(deletedPages.get(j))){
+                 pagesList.remove(deletedPages.get(j));
+             }
+         }
+         i.serializeIndex();
+         bucket.serializeBucket();
+        }
+    public Iterator selectFromTable (SQLTerm[] sqlTerms, String[] arrayOperators) throws DBAppException {
+
+        String tableName = sqlTerms[0]._strTableName; // table name I'm doing conditions on
+        String[] columns = new String[sqlTerms.length]; // columns that is included in the condition array(sqlTerms)
+        int noOfConditions = sqlTerms.length;
+        //getting the column names that are in the sqlterms array
+        for (int i = 0; i<sqlTerms.length; i++){
+            columns[i] = sqlTerms[i]._strColumnName;
+        }
+        //reading the metadata file to check if the table has an index or not
+        String line = "";
+        String splitBy = ",";
+        int i =0;
+        Vector<String[]> Data =new Vector<String[]>();
+        try{
+            BufferedReader br = new BufferedReader(new FileReader("src/main/resources/metadata.csv"));
+            while ((line = br.readLine()) != null)   //returns a Boolean value
+            {
+                String[] array= line.split(splitBy);
+                Data.add(array);
+
+            }
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        // end of reading
+
+
+        Vector<String> indexedColumns = new Vector<String>();
+        Vector<String> nonIndexedColumns = new Vector<String>();
+
+        //checking which columns are indexed and which are not (from the metadata)
+        Vector<SQLTerm> conditionsOfNonIndexedColumns=new Vector<SQLTerm>();
+        conditionsOfIndexedColumns=new Vector<SQLTerm>();
+
+        for (int j = 0; j<columns.length; j++){
+            for (int k = 0; k<Data.size();k++){
+                if ((Data.get(k)[0]).equals(tableName)){
+                    if (Data.get(k)[1].equals(columns[j])){
+                        if (Data.get(k)[4].equals("TRUE")) {
+                            indexedColumns.add(columns[j]);
+                            for (int h = 0; h < sqlTerms.length; h++) {
+                                if (sqlTerms[h]._strColumnName.equals(columns[j])) {
+                                    conditionsOfIndexedColumns.add(sqlTerms[h]);
                                     break;
                                 }
-                                case "<=": {
-                                    if ((Double) (row.get(columnName)) <= (Double) Value)
-                                        result.add(row);
-                                    break;
-                                }
-                                case ">": {
-                                    if ((Double) (row.get(columnName)) > (Double) Value)
-                                        result.add(row);
-                                    break;
-                                }
-                                case ">=": {
-                                    if ((Double) (row.get(columnName)) >= (Double) Value)
-                                        result.add(row);
-                                    break;
-                                }
-                                case "=": {
-                                    if ((row.get(columnName)).equals(Value))
-                                        result.add(row);
-                                    break;
-                                }
-                                case "!=": {
-                                    if (!(row.get(columnName)).equals(Value))
-                                        result.add(row);
-                                    break;
-                                }
-                                default:
-                                    throw new DBAppException("Wrong Condition Operator!");
+                            }
+                        }
+                        else
+                            nonIndexedColumns.add(columns[j]);
+                        for(int h=0;h<sqlTerms.length;h++){
+                            if(sqlTerms[h]._strColumnName.equals(columns[j])){
+                                conditionsOfNonIndexedColumns.add(sqlTerms[h]);
+                                break;
                             }
                         }
                     }
-                    Page overflow=new Page("name");
-                    if (page.overflowPage != null) {
-                        overflow = deserialize("src/main/resources/data" + "/" + tableName + j + "Over" + ".bin");
-                        //String p="src/main/resources/data" + "/" + tableName + i + "Over" + ".bin";  // overflow page path
-                        for (int j3 = 0; j3 < page.clusterings.size(); j3++) {
-                            Hashtable row = page.list.get(j);
-                            if (row.get(columnName) != null) {
-                                switch (conditions[i]._strOperator) {
-                                    case "<": {
-                                        if ((Double) (row.get(columnName)) < (Double) Value)
-                                            result.add(row);
-                                        break;
-                                    }
-                                    case "<=": {
-                                        if ((Double) (row.get(columnName)) <= (Double) Value)
-                                            result.add(row);
-                                        break;
-                                    }
-                                    case ">": {
-                                        if ((Double) (row.get(columnName)) > (Double) Value)
-                                            result.add(row);
-                                        break;
-                                    }
-                                    case ">=": {
-                                        if ((Double) (row.get(columnName)) >= (Double) Value)
-                                            result.add(row);
-                                        break;
-                                    }
-                                    case "=": {
-                                        if ((row.get(columnName)).equals(Value))
-                                            result.add(row);
-                                        break;
-                                    }
-                                    case "!=": {
-                                        if (!(row.get(columnName)).equals(Value))
-                                            result.add(row);
-                                        break;
-                                    }
-                                    default:
-                                        throw new DBAppException("Wrong Condition Operator!");
-                                }
-                            }}}
-                    serializePage(overflow);
-                    serializePage(page);
                 }
-                finalresult.put(conditions[i],result);
-
-
             }
         }
-        catch(Exception e){
-            System.out.println(e.getMessage());
-        }
-        serializeTable(table);
+        // end of checking
 
-        return finalresult;
+
+
+        //Which Index Should I Use?
+        Index index = returnAppropriateIndex(tableName, indexedColumns);
+        if (index!=null) {
+            SQLTerm[] arrayToBeInsertedIntoRecursiveMethod = new SQLTerm[conditionsOfIndexedColumns.size()];
+            String[] colsOfIndex = index.colNames;
+            for (int n = 0; n < index.colNames.length; n++) {
+                SQLTerm temp = new SQLTerm();
+                for (int n1 = 0; n1 < conditionsOfIndexedColumns.size(); n1++) {
+                    if (conditionsOfIndexedColumns.get(n1)._strColumnName.equals(colsOfIndex[n])) {
+                        temp = conditionsOfIndexedColumns.get(n1);
+                        break;
+                    }
+                }
+                arrayToBeInsertedIntoRecursiveMethod[n] = temp;
+            }
+            Vector<String> vectorToBeInsertedIntoRecursiveMethod = new Vector<String>();
+            Vector<String> bucketsPaths = recursiveMethod(arrayToBeInsertedIntoRecursiveMethod, index, index.grid, vectorToBeInsertedIntoRecursiveMethod);
+            Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> rowsOfIndexedConditions = loopBuckets(bucketsPaths, arrayToBeInsertedIntoRecursiveMethod);
+            // unknown function
+            String[] indexedCols;
+            Hashtable<String, String[]> IndexColsForOneIndex = new Hashtable<String, String[]>();
+            for (int i2 = 0; i2 < indexes.size(); i++) {
+                if (tableName.equals(indexes.get(i2).tableName)) {
+                    indexedCols = intersection(indexes.get(i2).colNames, columns);
+                    IndexColsForOneIndex.put(indexes.get(i2).indexId, indexedCols);
+                }
+            }
+            //end
+
+            // condition on columns have index
+            for (int i1 = 0; i1 < noOfConditions; i1++) {
+                if (indexedColumns.contains(sqlTerms[i1]._strColumnName)) {
+                    //searchInIndex(sqlTerms[i1]);
+                }
+            }
+            //end
+            SQLTerm[] conditions = new SQLTerm[conditionsOfNonIndexedColumns.size()];
+
+            Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> rows_resulted_from_nonindexed_columns = loopPagesWithCondition(tableName, conditionsOfNonIndexedColumns.toArray(conditions));
+
+            Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> hashtableOfAllConditions = new Hashtable<SQLTerm, Vector<Hashtable<String, Object>>>();
+            hashtableOfAllConditions.putAll(rows_resulted_from_nonindexed_columns);
+            hashtableOfAllConditions.putAll(rowsOfIndexedConditions);
+
+            Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> result = new Hashtable<SQLTerm, Vector<Hashtable<String, Object>>>();
+            for (int m = 0; m < sqlTerms.length; m++) {
+                result.put(sqlTerms[m], hashtableOfAllConditions.get(sqlTerms[i]));
+            }
+
+            Vector<Hashtable<String, Object>> finalResult = loopOnOperators(result, arrayOperators);
+            Iterator finalFinalResult = finalResult.iterator();
+            return finalFinalResult;
+        }
+        return null;
     }
-    /////////////////////////////
-    /*public void take_indexedConditions_returns_vectorOfIndexes (Vector<SQLTerm> conditions ,Index index) {
-        Hashtable<SQLTerm, Vector<Vector<Integer>>> result = new Hashtable<SQLTerm, Vector<Vector<Integer>>>();
-        Vector<Integer> indexes = new Vector<Integer>();
-        for (int i = 0; i < conditions.size(); i++) {
-            Vector<Vector<Integer>> locationsPerCondition = new Vector<Vector<Integer>>();
-            SQLTerm condition = conditions.get(i);
-            Object value = conditions.get(i)._objValue;
-            String columnName = conditions.get(i)._strColumnName;
-            Vector ranges = index.ranges.get(columnName);
-            //مش عارفين هنعمل ايه
-            for (int g = 0; g < ranges.size(); g++) {       // to know which index of the cell we should insert in
-                String type = getType(value);
 
-                if (type.equals("java.lang.String")) {
-                    if (((String) value).compareTo((String) ranges.get(g)) < 0) {
-                        indexes.add(i, g - 1);
-                    }
-                } else if (type.equals("java.lang.Integer")) {
-                    if (((Integer) value).compareTo((Integer) ranges.get(g)) < 0) {
-                        indexes.add(i, g - 1);
-                    }
-                } else if (type.equals("java.lang.Double")) {
-                    if (((Double) value).compareTo((Double) ranges.get(g)) < 0) {
-                        indexes.add(i, g - 1);
-                    }
-                } else if (type.equals("java.util.Date")) {
-                    if (((Date) value).compareTo((Date) ranges.get(g)) < 0) {
-                        indexes.add(i, g - 1);
-                    }
-                } else {
-                    try {
-                        throw new DBAppException("WRONG DATATYPE");
-                    } catch (DBAppException e) {
-                        System.out.println(e.getMessage());
-                    }
+    public Index returnAppropriateIndex(String tableName, Vector<String> indexedColumns){
+        for (int k = 0; k<indexes.size(); k++){
+            if(indexes.get(k).tableName.equals(tableName)){
+                if(indexes.get(k).colNames.equals(indexedColumns)){
+                    return indexes.get(k);
                 }
-
             }
-           // result.put(conditions.get(i),indexes);
         }
-    }*/
+        return null;
+    }
 
+    public Vector<Hashtable<String,Object>> loopOnOperators(Hashtable<SQLTerm,Vector<Hashtable<String, Object>>> cons, String[] strarrOperators){
+        Set<SQLTerm> keys = cons.keySet();
+        SQLTerm[] keysArray = keys.toArray(new SQLTerm[keys.size()]);
+        Vector<Hashtable<String,Object>> result = new Vector<Hashtable<String,Object>>();
+        for (int i = 0; i<strarrOperators.length; i++){
+            if(i==0){
+                result = operatorMethod(cons.get(keysArray[i]),cons.get(keysArray[i+1]),strarrOperators[i]);
+            }
+            else{
+                result = operatorMethod(result, cons.get(keysArray[i+1]),strarrOperators[i]);
+            }
+        }
+        return result;
+    }
+    ///////////////////////
+    public Vector<Hashtable<String,Object>> operatorMethod(Vector<Hashtable<String,Object>> v1, Vector<Hashtable<String,Object>> v2, String operator){
+        Vector<Hashtable<String,Object>> result = new Vector<Hashtable<String,Object>>();
+        switch (operator){
+            case "OR": result = OR(v1,v2); break;
+
+            case "AND": result = AND(v1,v2); break;
+
+            case "XOR": result = XOR(v1,v2); break;
+
+            default: break;
+        }
+
+        return result;
+    }
+
+
+    public Vector<Hashtable<String,Object>> OR(Vector<Hashtable<String,Object>> v1, Vector<Hashtable<String,Object>> v2){
+        Vector<Hashtable<String,Object>> result = new Vector<Hashtable<String,Object>>();
+        HashSet<Hashtable<String,Object>> set = new HashSet<Hashtable<String,Object>>();
+        set.addAll(v1);
+        set.addAll(v2);
+        result.addAll(set);
+        return result;
+    }
+
+    public Vector<Hashtable<String,Object>> AND(Vector<Hashtable<String,Object>> v1, Vector<Hashtable<String,Object>> v2){
+        Vector<Hashtable<String,Object>> result = new Vector<Hashtable<String,Object>>();
+        HashSet<Hashtable<String,Object>> set = new HashSet<Hashtable<String,Object>>();
+        set.addAll(v1);
+        set.retainAll(v2);
+        result.addAll(set);
+        return result;
+    }
+
+
+    public Vector<Hashtable<String, Object>> XOR(Vector<Hashtable<String, Object>> v1, Vector<Hashtable<String, Object>> v2){
+        Vector<Hashtable<String,Object>> result = new Vector<Hashtable<String,Object>>();
+        HashSet<Hashtable<String,Object>> set = new HashSet<Hashtable<String,Object>>();
+        set.addAll(v1);
+        set.addAll(v2);
+        v1.retainAll(v2); //a now has the intersection of a and b
+        set.removeAll(v1);
+        result.addAll(set);
+        return result;
+    }
+
+    ////////////////////////////////////
+
+    public String[] intersection(String[] s1, String[] s2){
+
+        HashSet<String> set = new HashSet<>();
+
+        set.addAll(Arrays.asList(s1));
+
+        set.retainAll(Arrays.asList(s2));
+
+        System.out.println(set);
+
+        //convert to array
+        String[] intersection = {};
+        return set.toArray(intersection);
+
+    }
     public Vector<String> recursiveMethod(SQLTerm[] conditions, Index index, Vector grid, Vector<String> bucketsPaths) throws DBAppException//assuming conditions are sorted
     {
         if (conditions.length==1){
@@ -1769,8 +2043,8 @@ public class DBApp implements DBAppInterface {
                 recursiveMethod(conditions1,index,(Vector)grid.get(indexVectorInGrid.get(i)),bucketsPaths);
             }
         }
-          //[[1,2],[3,4]]
-         return bucketsPaths;
+        //[[1,2],[3,4]]
+        return bucketsPaths;
     }
 
     public int recursiveMethodHelper(Vector ranges, Object value){
@@ -1796,8 +2070,8 @@ public class DBApp implements DBAppInterface {
                     System.out.println(e.getMessage());
                 }
             }
-    }
-    return -1;
+        }
+        return -1;
     }
     public Vector<Integer> subIndexes(SQLTerm condition, Vector ranges, int currentPosition) throws DBAppException { //i for conditions vector, g for ranges
         String operator = condition._strOperator;
@@ -1843,43 +2117,6 @@ public class DBApp implements DBAppInterface {
         }
         return result;
     }
-/*
-Vector ranges=index.ranges.get(columnNames[i])
-Vector ranges=index.ranges.get(columnNames[i]);// the vector of MIN values  of columnNames[i]
-                for(int g=0;g<ranges.size();g++){       // to know which index of the cell we should insert in
-                    String type=getType(value);
-                    if(type.equals("java.lang.String")){
-                        if (((String)value).compareTo((String)ranges.get(g)) < 0) {
-                            indexes[i]=g-1;
-                        }
-                    }
-                    else if(type.equals("java.lang.Integer")){
-                        if (((Integer)value).compareTo((Integer)ranges.get(g)) < 0) {
-                            indexes[i]=g-1;
-                        }
-                    }
-                    else if(type.equals("java.lang.Double")){
-                        if (((Double)value).compareTo((Double)ranges.get(g)) < 0) {
-                            indexes[i]=g-1;
-                        }
-                    }
-                    else if(type.equals("java.util.Date")){
-                        if (((Date)value).compareTo((Date)ranges.get(g)) < 0) {
-                            indexes[i]=g-1;
-                        }
-                    }
-                    else
-                    {
-                        try {
-                            throw new DBAppException("WRONG DATATYPE");
-                        } catch (DBAppException e) {
-                            System.out.println(e.getMessage());
-                        }
-                    }
- */
-
-
-    //////////////////////////////////
     public Hashtable<SQLTerm,Vector<Hashtable<String,Object>>> loopBuckets (Vector<String> bucket_Paths,SQLTerm [] conditions) {
         Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> result = new Hashtable<SQLTerm, Vector<Hashtable<String,Object>>>();
         for (int j = 0; j<conditions.length; j++) {
@@ -1904,60 +2141,60 @@ Vector ranges=index.ranges.get(columnNames[i]);// the vector of MIN values  of c
         Hashtable<SQLTerm,Vector<Hashtable<String, Object>>> finalresult = new Hashtable<SQLTerm,Vector<Hashtable<String, Object>>>();
         // each condition with the rows satisifying the condition
         try {
-                Vector<Hashtable<String, Object>> result = new Vector<Hashtable<String, Object>>();
-                Object Value = condition._objValue;
+            Vector<Hashtable<String, Object>> result = new Vector<Hashtable<String, Object>>();
+            Object Value = condition._objValue;
 
-                for (int j = 0; j < pages_paths.size(); j++) {
-                    //result = loopPageWithCondition(tableName, i, table.pagesPath.get(i), columnNames[i], conditions);
-                    Page page=deserialize(pages_paths.get(j));
-                    String columnName=condition._strColumnName;
-                    for (int j1 = 0; j < page.clusterings.size(); j++) {
-                        Hashtable row = page.list.get(j);
-                        if (row.get(columnName) != null) {
-                            switch (condition._strOperator) {
-                                case "<": {
-                                    if ((Double) (row.get(columnName)) < (Double) Value)
-                                        result.add(row);
-                                    break;
-                                }
-                                case "<=": {
-                                    if ((Double) (row.get(columnName)) <= (Double) Value)
-                                        result.add(row);
-                                    break;
-                                }
-                                case ">": {
-                                    if ((Double) (row.get(columnName)) > (Double) Value)
-                                        result.add(row);
-                                    break;
-                                }
-                                case ">=": {
-                                    if ((Double) (row.get(columnName)) >= (Double) Value)
-                                        result.add(row);
-                                    break;
-                                }
-                                case "=": {
-                                    if ((row.get(columnName)).equals(Value))
-                                        result.add(row);
-                                    break;
-                                }
-                                case "!=": {
-                                    if (!(row.get(columnName)).equals(Value))
-                                        result.add(row);
-                                    break;
-                                }
-                                default:
-                                    throw new DBAppException("Wrong Condition Operator!");
+            for (int j = 0; j < pages_paths.size(); j++) {
+                //result = loopPageWithCondition(tableName, i, table.pagesPath.get(i), columnNames[i], conditions);
+                Page page=deserialize(pages_paths.get(j));
+                String columnName=condition._strColumnName;
+                for (int j1 = 0; j < page.clusterings.size(); j++) {
+                    Hashtable row = page.list.get(j);
+                    if (row.get(columnName) != null) {
+                        switch (condition._strOperator) {
+                            case "<": {
+                                if ((Double) (row.get(columnName)) < (Double) Value)
+                                    result.add(row);
+                                break;
                             }
+                            case "<=": {
+                                if ((Double) (row.get(columnName)) <= (Double) Value)
+                                    result.add(row);
+                                break;
+                            }
+                            case ">": {
+                                if ((Double) (row.get(columnName)) > (Double) Value)
+                                    result.add(row);
+                                break;
+                            }
+                            case ">=": {
+                                if ((Double) (row.get(columnName)) >= (Double) Value)
+                                    result.add(row);
+                                break;
+                            }
+                            case "=": {
+                                if ((row.get(columnName)).equals(Value))
+                                    result.add(row);
+                                break;
+                            }
+                            case "!=": {
+                                if (!(row.get(columnName)).equals(Value))
+                                    result.add(row);
+                                break;
+                            }
+                            default:
+                                throw new DBAppException("Wrong Condition Operator!");
                         }
                     }
-
-
-                    serializePage(page);
                 }
-                finalresult.put(condition,result);
 
 
+                serializePage(page);
             }
+            finalresult.put(condition,result);
+
+
+        }
         catch(Exception e){
             System.out.println(e.getMessage());
         }
@@ -2133,187 +2370,125 @@ Vector ranges=index.ranges.get(columnNames[i]);// the vector of MIN values  of c
         }
         return finalResult;
     }
-    public static void updateIndex(String pagePath , Hashtable<String,Object>colnamevalue , String tableName){
-        Table target = DeserializeTable("src/main/resources/data/"+tableName+".bin");
-        for(int i =0 ;i<target.indicies.size();i++ ){
-            Index index = Index.DeserializeIndex(target.indicies.get(i));
-            Vector colValues = new Vector<String>();
-            for(int j  =0 ; j<index.colNames.length;j++){
-                colValues.add(colnamevalue.get(index.colNames[i]));
-                insertIntoBucketUpdate (pagePath,colValues , index,0,index.grid,"");
-            }
-        }
-
-    }
-    public static void insertIntoBucket (String pagePath, int[] indexes , Index index,int currentDimension,Vector data , Hashtable<String , Object> colnameval ) {
-        Bucket bucket =null;
-        String dimensionValue="";
-        if(currentDimension== index.colNames.length-1){
-            for(int i=0;i<indexes.length;i++)
-                dimensionValue+=indexes[i];
-            String bucketpath = (String)data.get(indexes[indexes.length-1]);
-            if(bucketpath == null) {
-                ///indexId + current dimension ??
-                bucket = new Bucket(index.indexId + dimensionValue, index);
-                data.insertElementAt("src/main/resources/data/" + bucket.BucketId + ".bin",indexes[indexes.length-1]);
-            }
-            else
-                bucket = Bucket.DeserializeBucket(bucketpath);
-            if(contains(index.colNames,index.clusteringKey)){
-                Vector a = bucket.list.get(colnameval.get(index.clusteringKey));
-                if(a== null){
-                    if(bucket.noOfEntries<bucket.max) {
-                        bucket.noOfEntries++;
-                        a = new Vector<String>();
-                    }
-                    else{
-                        a= new Vector<String>();
-                        a.add(pagePath);
-                        if(bucket.overFlow==null) {
-                            bucket.overFlow = new Bucket(bucket.BucketId + "Over", index);
-                            bucket.overFlow.list.put((String) colnameval.get(index.clusteringKey), a);
-                        }
-                        else{
-                            a.add(pagePath);
-                            bucket.list.put((String) colnameval.get(index.clusteringKey), a);
-                        }
-                    }
-
-                }
-                a.add(pagePath);
-                bucket.list.put((String) colnameval.get(index.clusteringKey), a);
-
-            }
-            //use left most col if primary key doesn't exist
-            else{
-                Vector a = bucket.list.get(colnameval.get(0));
-                if(a== null){
-                    if(bucket.noOfEntries<bucket.max) {
-                        a = new Vector<String>();
-                        bucket.noOfEntries++;
-                    }
-                    else{
-                        a= new Vector<String>();
-                        a.add(pagePath);
-                        if(bucket.overFlow==null) {
-                            bucket.overFlow = new Bucket(bucket.BucketId + "Over", index);
-                            bucket.overFlow.list.put((String) colnameval.get(0), a);
-                        }
-                        else{
-                            a.add(pagePath);
-                            bucket.list.put((String) colnameval.get(0), a);
-                        }
-                    }
-
-                }
-                a.add(pagePath);
-                bucket.list.put((String) colnameval.get(0), a);
-            }
-
-
-        }
-        else{
-            currentDimension++;
-            insertIntoBucket ( pagePath,indexes ,index,currentDimension, (Vector) data.get(indexes[currentDimension]), colnameval );
-
-        }
-        bucket.serializeBucket();
-    }
-    public static boolean contains (String [] arr, String s ){
-        for(int i =0 ;i<arr.length;i++){
-            if(arr[i].equals(s))
-                return true;
-        }
-        return false;
-    }
-    public static void loopPages(String tableName, String[] columnNames,Index index){
+    public Hashtable<SQLTerm,Vector<Hashtable<String, Object>>> loopPagesWithCondition(String tableName, SQLTerm [] conditions){
         Table table =DeserializeTable("src/main/resources/data/" + tableName + ".bin");
-        for(int i=0;i<table.pagesPath.size();i++){
-            loopPage(tableName, table.pagesPath.get(i), columnNames, index);
-            Page page=deserialize(table.pagesPath.get(i));
-            Page overflow=new Page("name");
-            if (page.overflowPage != null) {
+        Hashtable<SQLTerm,Vector<Hashtable<String, Object>>> finalresult = new Hashtable<SQLTerm,Vector<Hashtable<String, Object>>>();
+        // each condition with the rows satisifying the condition
+        try {
+            for (int i = 0; i < conditions.length; i++) {
+                Vector<Hashtable<String, Object>> result = new Vector<Hashtable<String, Object>>();
+                // vector of rows satisfying this condition
+                Object Value = conditions[i]._objValue;
 
-                overflow = deserialize("src/main/resources/data" + "/" + tableName + i + "Over" + ".bin");
-                String p="src/main/resources/data" + "/" + tableName + i + "Over" + ".bin";  // overflow page path
-                loopPage(tableName, p, columnNames, index);
+                for (int j = 0; j < table.pagesPath.size(); j++) {
+                    //result = loopPageWithCondition(tableName, i, table.pagesPath.get(i), columnNames[i], conditions);
+                    Page page=deserialize(table.pagesPath.get(j));
+                    String columnName=conditions[i]._strColumnName;
+                    for (int j1 = 0; j < page.clusterings.size(); j++) {
+                        Hashtable row = page.list.get(j);
+                        if (row.get(columnName) != null) {
+                            switch (conditions[i]._strOperator) {
+                                case "<": {
+                                    if ((Double) (row.get(columnName)) < (Double) Value)
+                                        result.add(row);
+                                    break;
+                                }
+                                case "<=": {
+                                    if ((Double) (row.get(columnName)) <= (Double) Value)
+                                        result.add(row);
+                                    break;
+                                }
+                                case ">": {
+                                    if ((Double) (row.get(columnName)) > (Double) Value)
+                                        result.add(row);
+                                    break;
+                                }
+                                case ">=": {
+                                    if ((Double) (row.get(columnName)) >= (Double) Value)
+                                        result.add(row);
+                                    break;
+                                }
+                                case "=": {
+                                    if ((row.get(columnName)).equals(Value))
+                                        result.add(row);
+                                    break;
+                                }
+                                case "!=": {
+                                    if (!(row.get(columnName)).equals(Value))
+                                        result.add(row);
+                                    break;
+                                }
+                                default:
+                                    throw new DBAppException("Wrong Condition Operator!");
+                            }
+                        }
+                    }
+                    Page overflow=new Page("name");
+                    if (page.overflowPage != null) {
+                        overflow = deserialize("src/main/resources/data" + "/" + tableName + j + "Over" + ".bin");
+                        //String p="src/main/resources/data" + "/" + tableName + i + "Over" + ".bin";  // overflow page path
+                        for (int j3 = 0; j3 < page.clusterings.size(); j3++) {
+                            Hashtable row = page.list.get(j);
+                            if (row.get(columnName) != null) {
+                                switch (conditions[i]._strOperator) {
+                                    case "<": {
+                                        if ((Double) (row.get(columnName)) < (Double) Value)
+                                            result.add(row);
+                                        break;
+                                    }
+                                    case "<=": {
+                                        if ((Double) (row.get(columnName)) <= (Double) Value)
+                                            result.add(row);
+                                        break;
+                                    }
+                                    case ">": {
+                                        if ((Double) (row.get(columnName)) > (Double) Value)
+                                            result.add(row);
+                                        break;
+                                    }
+                                    case ">=": {
+                                        if ((Double) (row.get(columnName)) >= (Double) Value)
+                                            result.add(row);
+                                        break;
+                                    }
+                                    case "=": {
+                                        if ((row.get(columnName)).equals(Value))
+                                            result.add(row);
+                                        break;
+                                    }
+                                    case "!=": {
+                                        if (!(row.get(columnName)).equals(Value))
+                                            result.add(row);
+                                        break;
+                                    }
+                                    default:
+                                        throw new DBAppException("Wrong Condition Operator!");
+                                }
+                            }}}
+                    serializePage(overflow);
+                    serializePage(page);
+                }
+                finalresult.put(conditions[i],result);
+
+
             }
-            serializePage(overflow);
-            serializePage(page);
+        }
+        catch(Exception e){
+            System.out.println(e.getMessage());
         }
         serializeTable(table);
+
+        return finalresult;
     }
-    public static void  loopPage(String tableName, String filepath, String[] columnNames,Index index)  {
-        Page page=deserialize(filepath);
-        for(int j=0;j<page.clusterings.size();j++){
-            // Hashtable<String,Integer> indexes=new Hashtable<String,Integer>();
-            int [] indexes =new int [columnNames.length];
-            Hashtable row=page.list.get(j);
-            for(int i=0;i<columnNames.length;i++){
-                Object value =row.get(columnNames[i]);
-                Vector ranges=index.ranges.get(columnNames[i]);// the vector of MIN values  of columnNames[i]
-                for(int g=0;g<ranges.size();g++){       // to know which index of the cell we should insert in
-                    String type=getType(value);
-                    if(type.equals("java.lang.String")){
-                        Character c = value.toString().charAt(0);
-                        Character range = (Character) ranges.get(g);
-                        if (c<=range) {
-                            indexes[i]=g-1;
-                        }
-                    }
-                    else if(type.equals("java.lang.Integer")){
-                        if (((Integer)value).compareTo((Integer)ranges.get(g)) < 0) {
-                            indexes[i]=g-1;
-                        }
-                    }
-                    else if(type.equals("java.lang.Double")){
-                        if (((Double)value).compareTo((Double)ranges.get(g)) < 0) {
-                            indexes[i]=g-1;
-                        }
-                    }
-                    else if(type.equals("java.util.Date")){
-                        String currDate = ((Date) value).toString();
-                        int numcurDate = Integer.parseInt(currDate);
-                        int rangeDate = Integer.parseInt(ranges.get(g).toString());
-                        if (numcurDate<=rangeDate) {
-                            indexes[i]=g-1;
-                        }
-                    }
-                    else
-                    {
-                        try {
-                            throw new DBAppException("WRONG DATATYPE");
-                        } catch (DBAppException e) {
-                            System.out.println(e.getMessage());
-                        }
-                    }
 
-
-
-                }
-
-            }
-            //public static void insertIntoBucket (String pagePath, int[] indexes , Index index,int currentDimension,Vector data , Hashtable<String , Object> colnameval ) {
-
-            insertIntoBucket(filepath,indexes,index,0,index.grid,row);
-            // KareemMethod(j,filepath,indexes,index);// j is the index of the row inside the page
-            //filepath is the path of the page containing the row
-            //indexes is the array  that contains the tuple that has the indexes
-            // that the row should be inserted in
-            //index is the Index you should insert the path in
-
-        }
-
-        serializePage(page);
-    }
 
     public static void main (String[] args) throws DBAppException, IOException, ParseException {
         String [] minDate = "22-7-1999".split("-");
         String [] maxDate = "30-5-2014".split("-");
         //    public static void createRangeList (Index index ,String colName, String type, String min,String max){
-        Index i = new Index("student", new String[]{"name"});
-        createRangeList(i,"name","java.util.Date","1999-11-01","2012-11-01");
-        System.out.println(i.ranges.get("name").toString());
+       // Index i = new Index("student", new String[]{"name"});
+       // createRangeList(i,"name","java.util.Date","1999-11-01","2012-11-01");
+          // System.out.println(i.ranges.get("name").toString());
         //System.out.println(Integer.parseInt("12344"));
        /*FileWriter csvWriter = null;
         Table t = DeserializeTable("src/main/resources/data/pcs.bin");

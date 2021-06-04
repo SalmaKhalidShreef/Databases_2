@@ -1,9 +1,6 @@
 import java.io.*;
-import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Set;
 import java.util.Vector;
-//import java.Bucket.*;
 
 public class Index {
     String tableName;
@@ -21,11 +18,11 @@ public class Index {
         for (int i=0;i<columnNames.length;i++){
             indexId+="_"+columnNames[i];
         }
-        ranges=new Hashtable<String,Vector<String>>();
+    ranges=new Hashtable<String,Vector<String>>();
         for (int i=0;i<colNames.length;i++)
             ranges.put(columnNames[i],new Vector());
     }
-    public void serializeIndex(){
+    public  void serializeIndex(){
         String indexId = this.indexId;
         try
         {
@@ -106,7 +103,6 @@ public class Index {
         }
 
     }
-
-}
+    }
 
 
