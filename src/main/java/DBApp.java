@@ -116,7 +116,7 @@ public class DBApp implements DBAppInterface {
         String data =getAttributes(tableName,clusteringKey,colNameType,colNameMin,colNameMax);
         fout.write(data.getBytes(), 0, data.length());
 */
-    @Override
+   // @Override
     public void createIndex(String tableName, String[] columnNames) throws DBAppException {
 
             // System.out.println("I came not update");
@@ -125,12 +125,13 @@ public class DBApp implements DBAppInterface {
             // Vector indicies = deserializeVector("src/main/resources/data/indicies.bin");
             table.indicies.add("src/main/resources/data/" + index.indexId + ".bin");
             serializeTable(table);
-            buildArray(index.colNames.length, index.grid,index);
+            buildArray(index.colNames.length, index.grid);
+            System.out.println(index.grid);
             updateMetadata(columnNames, tableName);
             createRanges(index);
             //method salma w nouran
             loopPages(tableName, columnNames, index);
-            System.out.println("I came loop");
+            //System.out.println("I came loop");
             //    indexes.add(index);??
             index.serializeIndex();
         }
@@ -1065,10 +1066,11 @@ public class DBApp implements DBAppInterface {
 
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    public static void  buildArray (int level, Vector array , Index index){
+    public static void  buildArray (int level, Vector array){
         if (level==1) {
-           // System.out.println(array.size());
-            index.grid=array;
+            for(int i =0;i<10;i++){
+               array.add("");
+            }
             return;
         }
         else {
@@ -1076,9 +1078,9 @@ public class DBApp implements DBAppInterface {
             int newLevel =--level;
             for (int i=0;i<10;i++)
                 array.add(new Vector(10));
-            System.out.println("index's Grid"+index.grid.size());
+           // System.out.println("index's Grid"+array);
             for(int i =0;i<10;i++)
-                buildArray(newLevel,(Vector) array.get(i),index);
+                buildArray(newLevel,(Vector) array.get(i));
         }
 
     }
@@ -1240,7 +1242,7 @@ public class DBApp implements DBAppInterface {
         }
     }
     public static void insertIntoBucketUpdate(String pagePath, Vector colValues , Index index,int currentDimension,Vector data, String dimensionValue ) {
-        System.out.println("I came update"+data.get(0).toString());
+       // System.out.println("I came update"+data.get(0).toString());
 
         String dimensionName = index.colNames[currentDimension];
         Vector currentRanges = index.ranges.get(dimensionName);
@@ -1248,6 +1250,7 @@ public class DBApp implements DBAppInterface {
         String bucketPath = null;
         int i = 0;//to get the range index
         //BASE CASE >>>  INSERTING INTO BUCKET
+
         if (currentDimension == index.colNames.length - 1) {
             Bucket bucket;
             for (i = 0; i < currentRanges.size(); i++) {
@@ -1456,37 +1459,53 @@ public class DBApp implements DBAppInterface {
 
     }
     public static void insertIntoBucket (String pagePath, int[] indexes , Index index,int currentDimension,Vector data , Hashtable<String , Object> colnameval ) {
+       // System.out.println("data array"+data);
         String bucketpath = null;
         Bucket bucket =null;
         String dimensionValue="";
+       /* for(int i =0;i<indexes.length;i++){
+            System.out.println("indexes"+i+": " +indexes[i]);
+        }*/
         if(currentDimension== index.colNames.length-1){
             //////////////// what the hell is this ????????
             for(int i=0;i<indexes.length;i++)
                 dimensionValue+=indexes[i];
-            System.out.println("DATA SIZE IS: " + data.size());
-            if(data.size()>0)
-                 bucketpath = (String)data.get(indexes[currentDimension]);
+                bucketpath = (String) data.get(indexes[currentDimension]);
             //never comes to this case !!
-            if(bucketpath == null) {
+            if(bucketpath == "") {
                 System.out.println("I came to bucket ==null");
                 ///indexId + current dimension ??
-                System.out.println("DATA ARRAY SIZE: " + data.size());
+               // System.out.println("DATA ARRAY SIZE: " + data.size());
                 bucket = new Bucket(index.indexId + dimensionValue, "src/main/resources/data/"+index.indexId+".bin");
-
                 if(colnameval.containsKey(index.clusteringKey)){
                     Vector v = new Vector<String>();
-                    v.add(colnameval.get(index.clusteringKey));
+                    v.add(pagePath);
+                    if(colnameval.get(index.clusteringKey) instanceof Date){
+                        DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+                        String strDate = dateFormat.format(colnameval.get(index.clusteringKey));
+                        String numcurDate = strDate.replace("-","");
+                        bucket.list.put(numcurDate,v);
+                    }
+                    else
                     bucket.list.put(index.clusteringKey,v);
 
                 }
                 else{
                     Vector v = new Vector<String>();
-                    v.add(colnameval.get(index.colNames[0]));
-                    bucket.list.put(index.colNames[0],v);
+                    v.add(pagePath);
+                    if(colnameval.get(index.clusteringKey) instanceof Date){
+                        DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+                        String strDate = dateFormat.format(colnameval.get(index.clusteringKey));
+                        String numcurDate = strDate.replace("-","");
+                        bucket.list.put(numcurDate,v);
+                    }
+                    else
+                        bucket.list.put(index.colNames[0],v);
                 }
+               // System.out.println(data);
+
                 data.insertElementAt("src/main/resources/data/" + bucket.BucketId + ".bin",indexes[indexes.length-1]);
-                bucket.serializeBucket();
-                index.serializeIndex();
+
             }
             else
                 bucket = Bucket.DeserializeBucket(bucketpath);
@@ -1502,17 +1521,31 @@ public class DBApp implements DBAppInterface {
                         a.add(pagePath);
                         if(bucket.overFlow==null) {
                             bucket.overFlow = new Bucket(bucket.BucketId + "Over", "src/main/resources/data/"+index.indexId+".bin");
-                            bucket.overFlow.list.put((String) colnameval.get(index.clusteringKey), a);
+                            if(colnameval.get(index.clusteringKey) instanceof Date){
+                                DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+                                String strDate = dateFormat.format(colnameval.get(index.clusteringKey));
+                                String numcurDate = strDate.replace("-","");
+                                bucket.list.put(numcurDate,a);
+                            }
+                            else
+                                bucket.overFlow.list.put((String) colnameval.get(index.clusteringKey), a);
                         }
                         else{
                             a.add(pagePath);
-                            bucket.list.put((String) colnameval.get(index.clusteringKey), a);
+                            if(colnameval.get(index.clusteringKey) instanceof Date){
+                                DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+                                String strDate = dateFormat.format(colnameval.get(index.clusteringKey));
+                                String numcurDate = strDate.replace("-","");
+                                bucket.list.put(numcurDate,a);
+                            }
+                            else
+                            bucket.list.put(colnameval.get(index.clusteringKey).toString(), a);
                         }
                     }
 
                 }
                 a.add(pagePath);
-                bucket.list.put((String) colnameval.get(index.clusteringKey), a);
+                bucket.list.put(colnameval.get(index.clusteringKey).toString(), a);
 
             }
             //use left most col if primary key doesn't exist
@@ -1528,29 +1561,54 @@ public class DBApp implements DBAppInterface {
                         a.add(pagePath);
                         if(bucket.overFlow==null) {
                             bucket.overFlow = new Bucket(bucket.BucketId + "Over", "src/main/resources/data/"+index.indexId+".bin");
+                            if(colnameval.get(index.clusteringKey) instanceof Date){
+                                DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+                                String strDate = dateFormat.format(colnameval.get(index.clusteringKey));
+                                String numcurDate = strDate.replace("-","");
+                                bucket.list.put(numcurDate,a);
+                            }
+                            else
                             bucket.overFlow.list.put((String) colnameval.get(0), a);
                         }
                         else{
                             a.add(pagePath);
+                            if(colnameval.get(index.clusteringKey) instanceof Date){
+                                DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+                                String strDate = dateFormat.format(colnameval.get(index.clusteringKey));
+                                String numcurDate = strDate.replace("-","");
+                                bucket.list.put(numcurDate,a);
+                            }
+                            else
                             bucket.list.put((String) colnameval.get(0), a);
                         }
                     }
 
                 }
                 a.add(pagePath);
+                if(colnameval.get(index.clusteringKey) instanceof Date){
+                    DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+                    String strDate = dateFormat.format(colnameval.get(index.clusteringKey));
+                    String numcurDate = strDate.replace("-","");
+                    bucket.list.put(numcurDate,a);
+                }
+                else
                 bucket.list.put((String) colnameval.get(0), a);
             }
 
 
         }
         else{
-            System.out.println("indexes dimension"+currentDimension);
+          //  System.out.println("indexes dimension"+currentDimension);
             currentDimension++;
+           // System.out.println(currentDimension);
             insertIntoBucket ( pagePath,indexes ,index,currentDimension, (Vector) data.get(indexes[currentDimension]), colnameval );
 
         }
-        bucket.serializeBucket();
-        index.serializeIndex();
+        //System.out.println("bucketPath is"+bucketpath);
+        if(currentDimension==index.colNames.length-1&& bucket!=null){
+            bucket.serializeBucket();
+            index.serializeIndex();
+        }
     }
     public static boolean contains (String [] arr, String s ){
         for(int i =0 ;i<arr.length;i++){
@@ -1597,7 +1655,11 @@ public class DBApp implements DBAppInterface {
                             int numericRange = Integer.parseInt(ranges.get(g).toString().replace("-",""));
                             int numericValue = Integer.parseInt(value.toString().replace("-",""));
                             if(numericValue<=numericRange){
-                                indexes[i]=g-1;
+                                if(g==0)
+                                    indexes[i]=0;
+                                else
+                                    indexes[i]=g-1;
+                                break;
                             }
                         }
                         else{
@@ -1605,28 +1667,48 @@ public class DBApp implements DBAppInterface {
                             System.out.println(ranges.get(g));
                             int range =  Integer.parseInt(ranges.get(g).toString());
                             if (c<=range) {
+                                if(g==0)
+                                    indexes[i]=0;
+                                else
                                 indexes[i]=g-1;
+                                break;
                             }}
                     }
                     else if(type.equals("java.lang.Integer")){
                         if (Integer.parseInt(value.toString())<(Integer.parseInt(ranges.get(g).toString()))) {
-                            indexes[i]=g-1;
+                            if(g==0)
+                                indexes[i]=0;
+                            else
+                                indexes[i]=g-1;
+                            break;
                         }
                     }
                     else if(type.equals("java.lang.Double")){
                         if ((Double.parseDouble(value.toString()) <(Double.parseDouble(ranges.get(g).toString())))) {
-                            indexes[i]=g-1;
+                            if(g==0)
+                                indexes[i]=0;
+                            else
+                                indexes[i]=g-1;
+                            break;
                         }
                     }
                     else if(type.equals("java.util.Date")){
                         Date currDate = (Date) value;
                         DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd");
+
                         String strDate = dateFormat.format(currDate);
 
                         int numcurDate = Integer.parseInt(strDate.replace("-",""));
                         int rangeDate = Integer.parseInt(ranges.get(g).toString());
                         if (numcurDate<=rangeDate) {
-                            indexes[i]=g-1;
+                            //System.out.println("num"+numcurDate);
+                            //System.out.println("range"+rangeDate+" "+g);
+
+                            if(g==0)
+                                indexes[i]=0;
+                            else
+                                indexes[i]=g-1;
+                            break;
                         }
                     }
                     else
@@ -1643,8 +1725,14 @@ public class DBApp implements DBAppInterface {
                 }
 
             }
+            //System.out.println(index.ranges);
+            //System.out.println(index.clusteringKey);
+            //System.out.println(index.colNames);
+
+            //System.out.println("indexes array"+indexes[0]);
+            //System.out.println("htbl"+row);
+
             //public static void insertIntoBucket (String pagePath, int[] indexes , Index index,int currentDimension,Vector data , Hashtable<String , Object> colnameval ) {
-            System.out.println("Grid size"+index.grid.size());
             insertIntoBucket(filepath,indexes,index,0,index.grid,row);
             // KareemMethod(j,filepath,indexes,index);// j is the index of the row inside the page
             //filepath is the path of the page containing the row
@@ -2612,6 +2700,15 @@ public class DBApp implements DBAppInterface {
     public static void main (String[] args) throws DBAppException, IOException, ParseException {
         String [] minDate = "22-7-1999".split("-");
         String [] maxDate = "30-5-2014".split("-");
+        Index i = new Index("courses", new String[]{"gpa"});
+        buildArray(2, i.grid);
+        Vector c = (Vector) i.grid.get(0);
+        c.add(9);
+        i.grid.set(0,c);
+      // Vector y = (Vector) x.get(0);
+
+        System.out.println(i.grid);
+
         //    public static void createRangeList (Index index ,String colName, String type, String min,String max){
         // Index i = new Index("student", new String[]{"name"});
         // createRangeList(i,"name","java.util.Date","1999-11-01","2012-11-01");

@@ -15,7 +15,7 @@ public class Bucket implements Serializable {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        BucketId=id;
+        BucketId=id+"bucket";
         list = new HashMap<String,Vector<String>>();
         this.indexPath=i;
     }
