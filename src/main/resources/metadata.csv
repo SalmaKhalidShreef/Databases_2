@@ -7,10 +7,6 @@ Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
 Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
 Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
 Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
 students,gpa,java.lang.Double,FALSE,True,0.7,5.0
 students,last_name,java.lang.String,FALSE,True,AAAAAA,zzzzzz
 students,first_name,java.lang.String,FALSE,True,AAAAAA,zzzzzz
@@ -33,7 +29,3 @@ Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
 Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
 Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, maxTable Name, Column Name, Column Type, ClusteringKey, Indexed, min, maxTable Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
 Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, maxTable Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, maxTable Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, maxTable Name, Column Name, Column Type, ClusteringKey, Indexed, min, maxTable Name, Column Name, Column Type, ClusteringKey, Indexed, min, max

@@ -2,7 +2,7 @@ import java.io.*;
 import java.util.Hashtable;
 import java.util.Vector;
 
-public class Index {
+public class Index implements Serializable {
     String tableName;
     String clusteringKey ;
     String[] colNames;
