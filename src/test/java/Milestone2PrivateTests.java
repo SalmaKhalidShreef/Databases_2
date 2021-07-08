@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class Milestone2Tests {
+public class Milestone2PrivateTests {
 
     @Test
     @Order(1)
@@ -188,6 +188,18 @@ public class Milestone2Tests {
         DBApp dbApp = new DBApp();
         dbApp.init();
         Iterator resultSet = dbApp.selectFromTable(arrSQLTerms , strarrOperators);
+
+        boolean entered =  false;
+        while (resultSet.hasNext()){
+            entered = true;
+            break;
+        }
+
+        if(entered){
+            throw new DBAppException();
+        }
+
+
     }
 
     @Test
@@ -246,6 +258,10 @@ public class Milestone2Tests {
         DBApp dbApp = new DBApp();
         dbApp.init();
         Iterator resultSet = dbApp.selectFromTable(arrSQLTerms , strarrOperators);
+
+        while (resultSet.hasNext()){
+            System.out.println("Student OR "+resultSet.next());
+        }
     }
 
     @Test
@@ -304,6 +320,11 @@ public class Milestone2Tests {
         DBApp dbApp = new DBApp();
         dbApp.init();
         Iterator resultSet = dbApp.selectFromTable(arrSQLTerms , strarrOperators);
+
+        while (resultSet.hasNext()){
+            System.out.println("Student AND "+resultSet.next());
+        }
+
     }
 
 

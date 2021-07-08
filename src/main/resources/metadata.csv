@@ -1,26 +1,18 @@
 Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
-students,gpa,java.lang.Double,FALSE,True,0.7,5.0
-students,last_name,java.lang.String,FALSE,True,AAAAAA,zzzzzz
-students,first_name,java.lang.String,FALSE,True,AAAAAA,zzzzzz
-students,dob,java.util.Date,FALSE,True,1990-01-01,2000-12-31
-students,id,java.lang.String,TRUE,True,43-0000,99-9999
+students,gpa,java.lang.Double,FALSE,TRUE,0.7,5.0
+students,last_name,java.lang.String,FALSE,TRUE,AAAAAA,zzzzzz
+students,first_name,java.lang.String,FALSE,TRUE,AAAAAA,zzzzzz
+students,dob,java.util.Date,FALSE,TRUE,1990-01-01,2000-12-31
+students,id,java.lang.String,TRUE,TRUE,43-0000,99-9999
 courses,hours,java.lang.Integer,FALSE,FALSE,1,24
-courses,date_added,java.util.Date,TRUE,True,1901-01-01,2020-12-31
+courses,date_added,java.util.Date,TRUE,TRUE,1901-01-01,2020-12-31
 courses,course_id,java.lang.String,FALSE,FALSE,0000,9999
 courses,course_name,java.lang.String,FALSE,FALSE,AAAAAA,zzzzzz
-transcripts,gpa,java.lang.Double,TRUE,True,0.7,5.0
-transcripts,date_passed,java.util.Date,FALSE,True,1990-01-01,2020-12-31
-transcripts,course_name,java.lang.String,FALSE,True,AAAAAA,zzzzzz
+transcripts,gpa,java.lang.Double,TRUE,TRUE,0.7,5.0
+transcripts,date_passed,java.util.Date,FALSE,TRUE,1990-01-01,2020-12-31
+transcripts,course_name,java.lang.String,FALSE,TRUE,AAAAAA,zzzzzz
 transcripts,student_id,java.lang.String,FALSE,FALSE,43-0000,99-9999
-pcs,pc_id,java.lang.Integer,TRUE,True,0,20000
+pcs,pc_id,java.lang.Integer,TRUE,TRUE,0,20000
 pcs,student_id,java.lang.String,FALSE,FALSE,43-0000,99-9999Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, maxTable Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
 Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max
 Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, maxTable Name, Column Name, Column Type, ClusteringKey, Indexed, min, max

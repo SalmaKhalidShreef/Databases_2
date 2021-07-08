@@ -35,7 +35,7 @@ public class DBApp implements DBAppInterface {
         if(created)
             System.out.println("Folder was created !");
         else
-            System.out.println("shhhh");
+            System.out.println("sh");
 
         String title = "Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max";
         try {
@@ -116,25 +116,26 @@ public class DBApp implements DBAppInterface {
         String data =getAttributes(tableName,clusteringKey,colNameType,colNameMin,colNameMax);
         fout.write(data.getBytes(), 0, data.length());
 */
-   // @Override
+    // @Override
     public void createIndex(String tableName, String[] columnNames) throws DBAppException {
 
-            // System.out.println("I came not update");
-            Index index = new Index(tableName, columnNames);
-            Table table = DeserializeTable("src/main/resources/data/" + tableName + ".bin");
-            // Vector indicies = deserializeVector("src/main/resources/data/indicies.bin");
-            table.indicies.add("src/main/resources/data/" + index.indexId + ".bin");
-            serializeTable(table);
-            buildArray(index.colNames.length, index.grid);
-            System.out.println(index.grid);
-            updateMetadata(columnNames, tableName);
-            createRanges(index);
-            //method salma w nouran
-            loopPages(tableName, columnNames, index);
-            //System.out.println("I came loop");
-            //    indexes.add(index);??
-            index.serializeIndex();
-        }
+
+        // System.out.println("I came not update");
+        Index index = new Index(tableName, columnNames);
+        Table table = DeserializeTable("src/main/resources/data/" + tableName + ".bin");
+        // Vector indicies = deserializeVector("src/main/resources/data/indicies.bin");
+        table.indicies.add("src/main/resources/data/" + index.indexId + ".bin");
+        serializeTable(table);
+        buildArray(index.colNames.length, index.grid);
+        System.out.println(index.grid);
+        updateMetadata(columnNames, tableName);
+        createRanges(index);
+        //method salma w nouran
+        loopPages(tableName, columnNames, index);
+        //System.out.println("I came loop");
+        //    indexes.add(index);??
+        index.serializeIndex();
+    }
 
 
 
@@ -142,75 +143,162 @@ public class DBApp implements DBAppInterface {
     @Override
     public void insertIntoTable(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
 
-            colNotFound(tableName, colNameValue);
-            Vector<String> tables = null; //all tables in the DB
-            Table target = null;
-            String tableFilePath = null;
-            String currentClustering = null; //clusteringKey of the entry
-            int maxRows = 0;
+        colNotFound(tableName, colNameValue);
+        Vector<String> tables = null; //all tables in the DB
+        Table target = null;
+        String tableFilePath = null;
+        String currentClustering = null; //clusteringKey of the entry
+        int maxRows = 0;
+        try {
+            maxRows = readConfig("MaximumRowsCountinPage");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        tables = deserializeVector("src/main/resources/data/tablesList.bin");
+        Vector<String> tableNames = deserializeVector("src/main/resources/data/tableNames.bin");
+        //getting targetted table
+        for (int i = 0; i < tables.size(); i++) {
+            if (tableNames.get(i).compareTo(tableName) == 0) {
+                tableFilePath = tables.get(i);
+                target = DeserializeTable(tableFilePath);
+                break;
+            }
+        }
+        if (target == null)
+            throw new DBAppException("Table not found");
+        currentClustering = colNameValue.get(target.clusteringKey).toString();
+        if (currentClustering == null) {
+            throw new DBAppException("you entered an entry with no primary key");
+        }
+        //table has no pages case
+        if (target.pagesPath.size() == 0) {
+            Page page = new Page(tableName + "0");
             try {
-                maxRows = readConfig("MaximumRowsCountinPage");
-            } catch (IOException e) {
-                e.printStackTrace();
+                checkDataTypes(tableName, colNameValue);
             }
-            tables = deserializeVector("src/main/resources/data/tablesList.bin");
-            Vector<String> tableNames = deserializeVector("src/main/resources/data/tableNames.bin");
-            //getting targetted table
-            for (int i = 0; i < tables.size(); i++) {
-                if (tableNames.get(i).compareTo(tableName) == 0) {
-                    tableFilePath = tables.get(i);
-                    target = DeserializeTable(tableFilePath);
-                    break;
-                }
+            catch (Exception e){
+                System.out.println(e.getMessage());
             }
-            if (target == null)
-                throw new DBAppException("Table not found");
-            currentClustering = colNameValue.get(target.clusteringKey).toString();
-            if (currentClustering == null) {
-                throw new DBAppException("you entered an entry with no primary key");
-            }
-            //table has no pages case
-            if (target.pagesPath.size() == 0) {
-                Page page = new Page(tableName + "0");
-                    try {
-                        checkDataTypes(tableName, colNameValue);
-                    }
-                    catch (Exception e){
-                        System.out.println(e.getMessage());
-                    }
-                    page.list.add(colNameValue);
-                    page.clusterings.add(colNameValue.get(target.clusteringKey).toString());
-                    serializePage(page);
-                    //"src/main/resources/data/"+pageName+".bin"
-                    target.pagesPath.add("src/main/resources/data/" + page.PageID + ".bin");
-                    target.min.add(colNameValue.get(target.clusteringKey).toString());
-                    target.max.add(colNameValue.get(target.clusteringKey).toString());
-                    serializeTable(target);
-                    serializePage(page);
+            page.list.add(colNameValue);
+            page.clusterings.add(colNameValue.get(target.clusteringKey).toString());
+            serializePage(page);
+            //"src/main/resources/data/"+pageName+".bin"
+            target.pagesPath.add("src/main/resources/data/" + page.PageID + ".bin");
+            target.min.add(colNameValue.get(target.clusteringKey).toString());
+            target.max.add(colNameValue.get(target.clusteringKey).toString());
+            serializeTable(target);
+            serializePage(page);
 
-            }//end of no pages case
-            else {
-                //finding the target page
-                int pageIndex = 0;
-                int k;
-                for (k = 0; k < target.pagesPath.size(); k++) {
-                    if (currentClustering.compareTo(target.min.get(k).toString()) < 0) {
-                        String currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
-                        Page currentPage = deserialize(currentPath);
-                        try {
+        }//end of no pages case
+        else {
+            //finding the target page
+            int pageIndex = 0;
+            int k;
+            for (k = 0; k < target.pagesPath.size(); k++) {
+                if (currentClustering.compareTo(target.min.get(k).toString()) < 0) {
+                    String currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
+                    Page currentPage = deserialize(currentPath);
+                    try {
+                        if (currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                            throw new DBAppException("there is an entry with this primary Key !");
+                    }
+                    catch (Exception ex){
+                        System.out.println(ex.getMessage());
+                    }
+                    if (currentPage.list.size() < maxRows) {
+                        insertIntoPage(currentPage, colNameValue, currentClustering, target, k);
+                        serializeTable(target);
+                        serializePage(currentPage);
+                        return;
+                    }
+                    //I reached max rows
+                    else {
+                        // check for existance of next page should be added
+                        //I have a next page case
+                        String nextPath = "src/main/resources/data" + "/" + target.tableName + (k + 1) + ".bin";
+                        if (target.pagesPath.contains(nextPath)) {
+                            Page nextPage = deserialize(nextPath);
+                            // next page below max rows
+                            try{
+                                if (nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                    throw new DBAppException("there is an entry with this primary Key !");}
+                            catch(Exception e){
+                                System.out.println(e.getMessage());
+                            }
+                            if (nextPage.list.size() < maxRows) {
+                                Hashtable targetElement = currentPage.list.get(currentPage.list.size() - 1);
+                                currentPage.list.removeElementAt(currentPage.list.size() - 1);
+                                String newMax = currentPage.list.get(currentPage.list.size() - 1).get(target.clusteringKey).toString();
+                                target.max.set(k, newMax);
+                                currentPage.clusterings.removeElementAt(currentPage.clusterings.size() - 1);
+                                nextPage.list.insertElementAt(targetElement, 0);
+                                nextPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(), 0);
+                                target.min.set(k + 1, (targetElement.get(target.clusteringKey)).toString());
+                                insertIntoPage(currentPage, colNameValue, currentClustering, target, k);
+                                serializePage(nextPage);
+                                serializePage(currentPage);
+                                serializeTable(target);
+                            } else {
+                                currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
+                                currentPage = deserialize(currentPath);
+                                try {
+                                    if (currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                        throw new DBAppException("there is an entry with this primary Key !");
+                                }
+                                catch (Exception e){
+                                    System.out.println(e.getMessage());
+                                }
+                                if (currentPage.overflowPage == null)
+                                    currentPage.overflowPage = new Page(currentPage.PageID + "Over");
+                                insertIntoPage(currentPage.overflowPage, colNameValue, currentClustering, target, k);
+                                serializePage(currentPage.overflowPage);
+                                serializePage(currentPage);
+                                serializeTable(target);
+                                return;
+                            }
+                        }//I dont have nextPage
+                        // in CASE THAT THE CURRENT PAGE IS THE LAST PAGE , THEN WE CREATE NEW PAGE AND SHIFT ONE ROW DOWN
+                        else {
+                            Page newPage = new Page(target.tableName + target.pagesPath.size());
+                            target.pagesPath.add("src/main/resources/data" + "/" + newPage.PageID + ".bin");
+                            currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
+                            currentPage = deserialize(currentPath);
                             if (currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
                                 throw new DBAppException("there is an entry with this primary Key !");
+                            Hashtable targetElement = currentPage.list.get(currentPage.list.size() - 1);
+                            currentPage.list.removeElementAt(currentPage.list.size() - 1);
+                            String newMax = currentPage.list.get(currentPage.list.size() - 1).get(target.clusteringKey).toString();
+                            target.max.set(k, newMax);
+                            currentPage.clusterings.removeElementAt(currentPage.clusterings.size() - 1);
+                            newPage.list.insertElementAt(targetElement, 0);
+                            newPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(), 0);
+                            target.min.add(targetElement.get(target.clusteringKey).toString());
+                            insertIntoPage(currentPage, colNameValue, currentClustering, target, k);
+                            target.max.add(targetElement.get(target.clusteringKey).toString());
+                            serializePage(newPage);
+                            serializePage(currentPage);
+                            serializeTable(target);
+                            return ;
                         }
-                        catch (Exception ex){
-                            System.out.println(ex.getMessage());
+                        //end of else -Iam not below max rows-
+                    }
+                }//end of I am below min case
+                else{
+                    if (currentClustering.compareTo(target.min.get(k).toString()) > 0 && currentClustering.compareTo(target.max.get(k).toString()) < 0) {
+                        String currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
+                        Page currentPage = deserialize(currentPath);
+                        try{
+                            if (currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                throw new DBAppException("there is an entry with this primary Key !");}
+                        catch (Exception e){
+                            System.out.println(e.getMessage());
                         }
                         if (currentPage.list.size() < maxRows) {
                             insertIntoPage(currentPage, colNameValue, currentClustering, target, k);
                             serializeTable(target);
                             serializePage(currentPage);
                             return;
-                        }
-                        //I reached max rows
+                        }//No I reached max
                         else {
                             // check for existance of next page should be added
                             //I have a next page case
@@ -218,8 +306,13 @@ public class DBApp implements DBAppInterface {
                             if (target.pagesPath.contains(nextPath)) {
                                 Page nextPage = deserialize(nextPath);
                                 // next page below max rows
-                                if (nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
-                                    throw new DBAppException("there is an entry with this primary Key !");
+                                try {
+                                    if (nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                        throw new DBAppException("there is an entry with this primary Key !");
+                                }
+                                catch(Exception e){
+                                    System.out.println(e.getMessage());
+                                }
                                 if (nextPage.list.size() < maxRows) {
                                     Hashtable targetElement = currentPage.list.get(currentPage.list.size() - 1);
                                     currentPage.list.removeElementAt(currentPage.list.size() - 1);
@@ -228,7 +321,7 @@ public class DBApp implements DBAppInterface {
                                     currentPage.clusterings.removeElementAt(currentPage.clusterings.size() - 1);
                                     nextPage.list.insertElementAt(targetElement, 0);
                                     nextPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(), 0);
-                                    target.min.set(k + 1, (targetElement.get(target.clusteringKey)).toString());
+                                    target.min.set(k + 1, targetElement.get(target.clusteringKey).toString());
                                     insertIntoPage(currentPage, colNameValue, currentClustering, target, k);
                                     serializePage(nextPage);
                                     serializePage(currentPage);
@@ -236,8 +329,13 @@ public class DBApp implements DBAppInterface {
                                 } else {
                                     currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
                                     currentPage = deserialize(currentPath);
-                                    if (currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
-                                        throw new DBAppException("there is an entry with this primary Key !");
+                                    try{
+                                        if (currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
+                                            throw new DBAppException("there is an entry with this primary Key !");
+                                    }
+                                    catch(Exception e){
+                                        System.out.println(e.getMessage());
+                                    }
                                     if (currentPage.overflowPage == null)
                                         currentPage.overflowPage = new Page(currentPage.PageID + "Over");
                                     insertIntoPage(currentPage.overflowPage, colNameValue, currentClustering, target, k);
@@ -272,105 +370,31 @@ public class DBApp implements DBAppInterface {
                             }
                             //end of else -Iam not below max rows-
                         }
-                    }//end of I am below min case
-                    else{
-                        if (currentClustering.compareTo(target.min.get(k).toString()) > 0 && currentClustering.compareTo(target.max.get(k).toString()) < 0) {
-                            String currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
-                            Page currentPage = deserialize(currentPath);
-                            if (currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
-                                throw new DBAppException("there is an entry with this primary Key !");
-                            if (currentPage.list.size() < maxRows) {
-                                insertIntoPage(currentPage, colNameValue, currentClustering, target, k);
-                                serializeTable(target);
-                                serializePage(currentPage);
-                                return;
-                            }//No I reached max
-                            else {
-                                // check for existance of next page should be added
-                                //I have a next page case
-                                String nextPath = "src/main/resources/data" + "/" + target.tableName + (k + 1) + ".bin";
-                                if (target.pagesPath.contains(nextPath)) {
-                                    Page nextPage = deserialize(nextPath);
-                                    // next page below max rows
-                                    if (nextPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
-                                        throw new DBAppException("there is an entry with this primary Key !");
-                                    if (nextPage.list.size() < maxRows) {
-                                        Hashtable targetElement = currentPage.list.get(currentPage.list.size() - 1);
-                                        currentPage.list.removeElementAt(currentPage.list.size() - 1);
-                                        String newMax = currentPage.list.get(currentPage.list.size() - 1).get(target.clusteringKey).toString();
-                                        target.max.set(k, newMax);
-                                        currentPage.clusterings.removeElementAt(currentPage.clusterings.size() - 1);
-                                        nextPage.list.insertElementAt(targetElement, 0);
-                                        nextPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(), 0);
-                                        target.min.set(k + 1, targetElement.get(target.clusteringKey).toString());
-                                        insertIntoPage(currentPage, colNameValue, currentClustering, target, k);
-                                        serializePage(nextPage);
-                                        serializePage(currentPage);
-                                        serializeTable(target);
-                                    } else {
-                                        currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
-                                        currentPage = deserialize(currentPath);
-                                        if (currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
-                                            throw new DBAppException("there is an entry with this primary Key !");
-                                        if (currentPage.overflowPage == null)
-                                            currentPage.overflowPage = new Page(currentPage.PageID + "Over");
-                                        insertIntoPage(currentPage.overflowPage, colNameValue, currentClustering, target, k);
-                                        serializePage(currentPage.overflowPage);
-                                        serializePage(currentPage);
-                                        serializeTable(target);
-                                        return;
-                                    }
-                                }//I dont have nextPage
-                                // in CASE THAT THE CURRENT PAGE IS THE LAST PAGE , THEN WE CREATE NEW PAGE AND SHIFT ONE ROW DOWN
-                                else {
-                                    Page newPage = new Page(target.tableName + target.pagesPath.size());
-                                    target.pagesPath.add("src/main/resources/data" + "/" + newPage.PageID + ".bin");
-                                    currentPath = "src/main/resources/data" + "/" + target.tableName + k + ".bin";
-                                    currentPage = deserialize(currentPath);
-                                    if (currentPage.clusterings.contains(colNameValue.get(target.clusteringKey).toString()))
-                                        throw new DBAppException("there is an entry with this primary Key !");
-                                    Hashtable targetElement = currentPage.list.get(currentPage.list.size() - 1);
-                                    currentPage.list.removeElementAt(currentPage.list.size() - 1);
-                                    String newMax = currentPage.list.get(currentPage.list.size() - 1).get(target.clusteringKey).toString();
-                                    target.max.set(k, newMax);
-                                    currentPage.clusterings.removeElementAt(currentPage.clusterings.size() - 1);
-                                    newPage.list.insertElementAt(targetElement, 0);
-                                    newPage.clusterings.insertElementAt(targetElement.get(target.clusteringKey).toString(), 0);
-                                    target.min.add(targetElement.get(target.clusteringKey).toString());
-                                    insertIntoPage(currentPage, colNameValue, currentClustering, target, k);
-                                    target.max.add(targetElement.get(target.clusteringKey).toString());
-                                    serializePage(newPage);
-                                    serializePage(currentPage);
-                                    serializeTable(target);
-                                    return ;
-                                }
-                                //end of else -Iam not below max rows-
-                            }
-                        }
-                    }
-                }//end of loop
-                if (k >= target.pagesPath.size()) {
-                    String path = target.pagesPath.get(target.pagesPath.size() - 1);
-                    Page lastPage = deserialize(path);
-                    if (lastPage.list.size() < maxRows) {
-                        insertIntoPage(lastPage,colNameValue,currentClustering,target,target.pagesPath.size()-1);
-                        serializeTable(target);
-                        return;
-                    }
-                    else {
-                        Page newPage = new Page(tableName + k);
-                        newPage.list.add(colNameValue);
-                        newPage.clusterings.add(currentClustering);
-                        target.max.add(currentClustering);
-                        target.min.add(currentClustering);
-                        target.pagesPath.add("src/main/resources/data/" + newPage.PageID + ".bin");
-                        serializePage(newPage);
-                        serializeTable(target);
-                        return;
                     }
                 }
+            }//end of loop
+            if (k >= target.pagesPath.size()) {
+                String path = target.pagesPath.get(target.pagesPath.size() - 1);
+                Page lastPage = deserialize(path);
+                if (lastPage.list.size() < maxRows) {
+                    insertIntoPage(lastPage,colNameValue,currentClustering,target,target.pagesPath.size()-1);
+                    serializeTable(target);
+                    return;
+                }
+                else {
+                    Page newPage = new Page(tableName + k);
+                    newPage.list.add(colNameValue);
+                    newPage.clusterings.add(currentClustering);
+                    target.max.add(currentClustering);
+                    target.min.add(currentClustering);
+                    target.pagesPath.add("src/main/resources/data/" + newPage.PageID + ".bin");
+                    serializePage(newPage);
+                    serializeTable(target);
+                    return;
+                }
+            }
 
-            }    }
+        }    }
 
 
     public static void insertIntoPage (Page currentPage, Hashtable colNameValue, String currentClustering, Table
@@ -384,20 +408,33 @@ public class DBApp implements DBAppInterface {
 
             System.out.println(currentPage.clusterings.toString());
             System.out.println(currentPage.list.toString());}
+        if (idx<0) {
 
-        x = -1 - idx;
-        if (x > 250){
-            throw  new DBAppException("Ana bayez xX");
-        }
-        currentPage.list.insertElementAt(colNameValue, x);
-        //inserting the clustering key at the clusterings vector
-        currentPage.clusterings.insertElementAt( colNameValue.get(target.clusteringKey.toString()).toString(), x);
 
-        if (currentClustering.compareTo(target.min.get(pageIndex).toString()) < 0) {
-            target.min.set(pageIndex, currentClustering);
+            x = -1 - idx;
+            System.out.println("XXXXXXXXX: " + x);
+            if (x > 250) {
+                throw new DBAppException("Ana bayez xX");
+            }
+            try {
+                currentPage.list.insertElementAt(colNameValue, x);
+
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+            }
+            //inserting the clustering key at the clusterings vector
+            currentPage.clusterings.insertElementAt(colNameValue.get(target.clusteringKey.toString()).toString(), x);
+
+
+            if (currentClustering.compareTo(target.min.get(pageIndex).toString()) < 0) {
+                target.min.set(pageIndex, currentClustering);
+            }
+            if (currentClustering.compareTo(target.max.get(pageIndex).toString()) > 0)
+                target.max.set(pageIndex, currentClustering);
         }
-        if (currentClustering.compareTo(target.max.get(pageIndex).toString()) > 0)
-            target.max.set(pageIndex, currentClustering);
+        else{
+            System.out.println("Record already exists");
+        }
         serializePage(currentPage);
         serializeTable(target);
     }
@@ -1069,7 +1106,7 @@ public class DBApp implements DBAppInterface {
     public static void  buildArray (int level, Vector array){
         if (level==1) {
             for(int i =0;i<10;i++){
-               array.add("");
+                array.add("");
             }
             return;
         }
@@ -1078,14 +1115,14 @@ public class DBApp implements DBAppInterface {
             int newLevel =--level;
             for (int i=0;i<10;i++)
                 array.add(new Vector(10));
-           // System.out.println("index's Grid"+array);
+            // System.out.println("index's Grid"+array);
             for(int i =0;i<10;i++)
                 buildArray(newLevel,(Vector) array.get(i));
         }
 
     }
 
-    public static void updateMetadata (String[] attributes,String tableName) {
+    public static void updateMetadata (String[] attributes,String tableName) throws DBAppException {
         Vector<String[]> Data = new Vector<String[]>();
         String line = "";
         String splitBy = ",";
@@ -1103,15 +1140,16 @@ public class DBApp implements DBAppInterface {
             e.printStackTrace();
         }
         for (int k = 0; k < attributes.length; k++) {
-            for (int j = 0; j < Data.size(); j++) {
+            for (int j = 1; j < Data.size(); j++) {
                 if (Data.get(j)[0].equals(tableName) && Data.get(j)[1].equals(attributes[k])) {
-                    Data.get(j)[4]="True";
+                    Data.get(j)[4]="TRUE";
 
                 }
+
             }
         }
-        String result ="Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max"+'\n';
-        for (int m=0;m<Data.size();m++){
+      String result ="";
+        for (int m=1;m<Data.size();m++){
             for (int n =0;n<Data.get(m).length;n++){
                 if(n==Data.get(m).length-1)
                     result+=Data.get(m)[n];
@@ -1121,9 +1159,10 @@ public class DBApp implements DBAppInterface {
             }
             result+='\n';
         }
+        String resultFinal = "Table Name, Column Name, Column Type, ClusteringKey, Indexed, min, max"+'\n'+result;
         try {
-            FileWriter csvWriter = new FileWriter("src/main/resources/metadata.csv");
-            csvWriter.write(result);
+            FileWriter csvWriter = new FileWriter("src/main/resources/metadata.csv",false);
+            csvWriter.write(resultFinal);
             csvWriter.flush();
             csvWriter.close();
         } catch(Exception e){
@@ -1242,7 +1281,7 @@ public class DBApp implements DBAppInterface {
         }
     }
     public static void insertIntoBucketUpdate(String pagePath, Vector colValues , Index index,int currentDimension,Vector data, String dimensionValue ) {
-       // System.out.println("I came update"+data.get(0).toString());
+        // System.out.println("I came update"+data.get(0).toString());
 
         String dimensionName = index.colNames[currentDimension];
         Vector currentRanges = index.ranges.get(dimensionName);
@@ -1459,7 +1498,7 @@ public class DBApp implements DBAppInterface {
 
     }
     public static void insertIntoBucket (String pagePath, int[] indexes , Index index,int currentDimension,Vector data , Hashtable<String , Object> colnameval ) {
-       // System.out.println("data array"+data);
+        // System.out.println("data array"+data);
         String bucketpath = null;
         Bucket bucket =null;
         String dimensionValue="";
@@ -1470,12 +1509,12 @@ public class DBApp implements DBAppInterface {
             //////////////// what the hell is this ????????
             for(int i=0;i<indexes.length;i++)
                 dimensionValue+=indexes[i];
-                bucketpath = (String) data.get(indexes[currentDimension]);
+            bucketpath = (String) data.get(indexes[currentDimension]);
             //never comes to this case !!
             if(bucketpath == "") {
-                System.out.println("I came to bucket ==null");
+                //  System.out.println("I came to bucket ==null");
                 ///indexId + current dimension ??
-               // System.out.println("DATA ARRAY SIZE: " + data.size());
+                // System.out.println("DATA ARRAY SIZE: " + data.size());
                 bucket = new Bucket(index.indexId + dimensionValue, "src/main/resources/data/"+index.indexId+".bin");
                 if(colnameval.containsKey(index.clusteringKey)){
                     Vector v = new Vector<String>();
@@ -1487,7 +1526,7 @@ public class DBApp implements DBAppInterface {
                         bucket.list.put(numcurDate,v);
                     }
                     else
-                    bucket.list.put(index.clusteringKey,v);
+                        bucket.list.put(index.clusteringKey,v);
 
                 }
                 else{
@@ -1502,7 +1541,7 @@ public class DBApp implements DBAppInterface {
                     else
                         bucket.list.put(index.colNames[0],v);
                 }
-               // System.out.println(data);
+                // System.out.println(data);
 
                 data.insertElementAt("src/main/resources/data/" + bucket.BucketId + ".bin",indexes[indexes.length-1]);
 
@@ -1539,7 +1578,7 @@ public class DBApp implements DBAppInterface {
                                 bucket.list.put(numcurDate,a);
                             }
                             else
-                            bucket.list.put(colnameval.get(index.clusteringKey).toString(), a);
+                                bucket.list.put(colnameval.get(index.clusteringKey).toString(), a);
                         }
                     }
 
@@ -1568,7 +1607,7 @@ public class DBApp implements DBAppInterface {
                                 bucket.list.put(numcurDate,a);
                             }
                             else
-                            bucket.overFlow.list.put((String) colnameval.get(0), a);
+                                bucket.overFlow.list.put((String) colnameval.get(0), a);
                         }
                         else{
                             a.add(pagePath);
@@ -1579,7 +1618,7 @@ public class DBApp implements DBAppInterface {
                                 bucket.list.put(numcurDate,a);
                             }
                             else
-                            bucket.list.put((String) colnameval.get(0), a);
+                                bucket.list.put((String) colnameval.get(0), a);
                         }
                     }
 
@@ -1592,15 +1631,15 @@ public class DBApp implements DBAppInterface {
                     bucket.list.put(numcurDate,a);
                 }
                 else
-                bucket.list.put((String) colnameval.get(0), a);
+                    bucket.list.put((String) colnameval.get(0), a);
             }
 
 
         }
         else{
-          //  System.out.println("indexes dimension"+currentDimension);
+            //  System.out.println("indexes dimension"+currentDimension);
             currentDimension++;
-           // System.out.println(currentDimension);
+            // System.out.println(currentDimension);
             insertIntoBucket ( pagePath,indexes ,index,currentDimension, (Vector) data.get(indexes[currentDimension]), colnameval );
 
         }
@@ -1620,7 +1659,7 @@ public class DBApp implements DBAppInterface {
     public static void loopPages(String tableName, String[] columnNames,Index index){
         //System.out.println("I came loop method");
         Table table =DeserializeTable("src/main/resources/data/" + tableName + ".bin");
-       // System.out.println("I entered the loop");
+        // System.out.println("I entered the loop");
 
         for(int i=0;i<table.pagesPath.size();i++){
             loopPage(tableName, table.pagesPath.get(i), columnNames, index);
@@ -1670,7 +1709,7 @@ public class DBApp implements DBAppInterface {
                                 if(g==0)
                                     indexes[i]=0;
                                 else
-                                indexes[i]=g-1;
+                                    indexes[i]=g-1;
                                 break;
                             }}
                     }
@@ -1968,140 +2007,142 @@ public class DBApp implements DBAppInterface {
         bucket.serializeBucket();
     }
     public Iterator selectFromTable (SQLTerm[] sqlTerms, String[] arrayOperators) throws DBAppException {
-        try{
-            String tableName = sqlTerms[0]._strTableName; // table name I'm doing conditions on
-            String[] columns = new String[sqlTerms.length]; // columns that is included in the condition array(sqlTerms)
-            int noOfConditions = sqlTerms.length;
-            //getting the column names that are in the sqlterms array
-            for (int i = 0; i<sqlTerms.length; i++){
-                columns[i] = sqlTerms[i]._strColumnName;
-            }
-            //reading the metadata file to check if the table has an index or not
-            String line = "";
-            String splitBy = ",";
-            int i =0;
-            Vector<String[]> Data =new Vector<String[]>();
+        Table table = DeserializeTable("src/resources/data/"+sqlTerms[0]._strTableName+".bin");
+        if(table!=null){
             try{
-                BufferedReader br = new BufferedReader(new FileReader("src/main/resources/metadata.csv"));
-                while ((line = br.readLine()) != null)   //returns a Boolean value
-                {
-                    String[] array= line.split(splitBy);
-                    Data.add(array);
-
+                String tableName = sqlTerms[0]._strTableName; // table name I'm doing conditions on
+                String[] columns = new String[sqlTerms.length]; // columns that is included in the condition array(sqlTerms)
+                int noOfConditions = sqlTerms.length;
+                //getting the column names that are in the sqlterms array
+                for (int i = 0; i<sqlTerms.length; i++){
+                    columns[i] = sqlTerms[i]._strColumnName;
                 }
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
-            }
-            // end of reading
+                //reading the metadata file to check if the table has an index or not
+                String line = "";
+                String splitBy = ",";
+                int i =0;
+                Vector<String[]> Data =new Vector<String[]>();
+                try{
+                    BufferedReader br = new BufferedReader(new FileReader("src/main/resources/metadata.csv"));
+                    while ((line = br.readLine()) != null)   //returns a Boolean value
+                    {
+                        String[] array= line.split(splitBy);
+                        Data.add(array);
+
+                    }
+                }
+                catch (IOException e)
+                {
+                    e.printStackTrace();
+                }
+                // end of reading
 
 
-            Vector<String> indexedColumns = new Vector<String>();
-            Vector<String> nonIndexedColumns = new Vector<String>();
+                Vector<String> indexedColumns = new Vector<String>();
+                Vector<String> nonIndexedColumns = new Vector<String>();
 
-            //checking which columns are indexed and which are not (from the metadata)
-            Vector<SQLTerm> conditionsOfNonIndexedColumns=new Vector<SQLTerm>();
-            conditionsOfIndexedColumns=new Vector<SQLTerm>();
+                //checking which columns are indexed and which are not (from the metadata)
+                Vector<SQLTerm> conditionsOfNonIndexedColumns=new Vector<SQLTerm>();
+                conditionsOfIndexedColumns=new Vector<SQLTerm>();
 
-            for (int j = 0; j<columns.length; j++){
-                for (int k = 0; k<Data.size();k++){
-                    if ((Data.get(k)[0]).equals(tableName)){
-                        if (Data.get(k)[1].equals(columns[j])){
-                            if (Data.get(k)[4].equals("TRUE")) {
-                                indexedColumns.add(columns[j]);
-                                for (int h = 0; h < sqlTerms.length; h++) {
-                                    if (sqlTerms[h]._strColumnName.equals(columns[j])) {
-                                        conditionsOfIndexedColumns.add(sqlTerms[h]);
+                for (int j = 0; j<columns.length; j++){
+                    for (int k = 0; k<Data.size();k++){
+                        if ((Data.get(k)[0]).equals(tableName)){
+                            if (Data.get(k)[1].equals(columns[j])){
+                                if (Data.get(k)[4].equals("TRUE")) {
+                                    indexedColumns.add(columns[j]);
+                                    for (int h = 0; h < sqlTerms.length; h++) {
+                                        if (sqlTerms[h]._strColumnName.equals(columns[j])) {
+                                            conditionsOfIndexedColumns.add(sqlTerms[h]);
+                                            break;
+                                        }
+                                    }
+                                }
+                                else
+                                    nonIndexedColumns.add(columns[j]);
+                                for(int h=0;h<sqlTerms.length;h++){
+                                    if(sqlTerms[h]._strColumnName.equals(columns[j])){
+                                        conditionsOfNonIndexedColumns.add(sqlTerms[h]);
                                         break;
                                     }
                                 }
                             }
-                            else
-                                nonIndexedColumns.add(columns[j]);
-                            for(int h=0;h<sqlTerms.length;h++){
-                                if(sqlTerms[h]._strColumnName.equals(columns[j])){
-                                    conditionsOfNonIndexedColumns.add(sqlTerms[h]);
+                        }
+                    }
+                }
+                // end of checking
+
+
+                Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> rowsOfIndexedConditions = new Hashtable<SQLTerm, Vector<Hashtable<String,Object>>>();
+                //Which Index Should I Use?
+                Hashtable<String, Vector<String>> appropriateIndexColumns= returnAppropriateIndex(tableName, indexedColumns);
+                Vector<String> unknown = appropriateIndexColumns.get("Unknown");
+                appropriateIndexColumns.remove("Unknown");
+                if(unknown.size()!=0){
+                    nonIndexedColumns.addAll(unknown);
+                }
+                Set<String> indexids  = appropriateIndexColumns.keySet();
+                String id;
+                for(String k : indexids) {
+                    id = k;
+                    Index index = Index.DeserializeIndex("src/resources/data/" + id + ".bin");
+                    if (index != null) {
+                        SQLTerm[] arrayToBeInsertedIntoRecursiveMethod = new SQLTerm[conditionsOfIndexedColumns.size()];
+                        String[] colsOfIndex = index.colNames;
+                        for (int n = 0; n < index.colNames.length; n++) {
+                            SQLTerm temp = new SQLTerm();
+                            for (int n1 = 0; n1 < conditionsOfIndexedColumns.size(); n1++) {
+                                if (conditionsOfIndexedColumns.get(n1)._strColumnName.equals(colsOfIndex[n])) {
+                                    temp = conditionsOfIndexedColumns.get(n1);
                                     break;
                                 }
                             }
+                            arrayToBeInsertedIntoRecursiveMethod[n] = temp;
                         }
-                    }
-                }
-            }
-            // end of checking
+                        Vector<String> vectorToBeInsertedIntoRecursiveMethod = new Vector<String>();
+                        Vector<String> bucketsPaths = recursiveMethod(arrayToBeInsertedIntoRecursiveMethod, index, index.grid, vectorToBeInsertedIntoRecursiveMethod);
+                        rowsOfIndexedConditions = loopBuckets(bucketsPaths, arrayToBeInsertedIntoRecursiveMethod);
+                        // unknown function
+                        String[] indexedCols;
+                        Hashtable<String, String[]> IndexColsForOneIndex = new Hashtable<String, String[]>();
+                        //  table = DeserializeTable("src/main/resources/data/" + tableName + ".bin");
+                        Vector<String> indexes = table.indicies;
+                        for (int i2 = 0; i2 < indexes.size(); i++) {
+                            Index index1 = Index.DeserializeIndex(indexes.get(i2));
+                            indexedCols = intersection(index1.colNames, columns);
+                            IndexColsForOneIndex.put(index1.indexId, indexedCols);
+                        }
+                        //end
 
-
-            Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> rowsOfIndexedConditions = new Hashtable<SQLTerm, Vector<Hashtable<String,Object>>>();
-            //Which Index Should I Use?
-            Hashtable<String, Vector<String>> appropriateIndexColumns= returnAppropriateIndex(tableName, indexedColumns);
-            Vector<String> unknown = appropriateIndexColumns.get("Unknown");
-            appropriateIndexColumns.remove("Unknown");
-            if(unknown.size()!=0){
-                nonIndexedColumns.addAll(unknown);
-            }
-            Set<String> indexids  = appropriateIndexColumns.keySet();
-            String id;
-            for(String k : indexids) {
-                id = k;
-                Index index = Index.DeserializeIndex("src/resources/data/" + id + ".bin");
-                if (index != null) {
-                    SQLTerm[] arrayToBeInsertedIntoRecursiveMethod = new SQLTerm[conditionsOfIndexedColumns.size()];
-                    String[] colsOfIndex = index.colNames;
-                    for (int n = 0; n < index.colNames.length; n++) {
-                        SQLTerm temp = new SQLTerm();
-                        for (int n1 = 0; n1 < conditionsOfIndexedColumns.size(); n1++) {
-                            if (conditionsOfIndexedColumns.get(n1)._strColumnName.equals(colsOfIndex[n])) {
-                                temp = conditionsOfIndexedColumns.get(n1);
-                                break;
+                        // condition on columns have index
+                        for (int i1 = 0; i1 < noOfConditions; i1++) {
+                            if (indexedColumns.contains(sqlTerms[i1]._strColumnName)) {
+                                //searchInIndex(sqlTerms[i1]);
                             }
                         }
-                        arrayToBeInsertedIntoRecursiveMethod[n] = temp;
-                    }
-                    Vector<String> vectorToBeInsertedIntoRecursiveMethod = new Vector<String>();
-                    Vector<String> bucketsPaths = recursiveMethod(arrayToBeInsertedIntoRecursiveMethod, index, index.grid, vectorToBeInsertedIntoRecursiveMethod);
-                    rowsOfIndexedConditions = loopBuckets(bucketsPaths, arrayToBeInsertedIntoRecursiveMethod);
-                    // unknown function
-                    String[] indexedCols;
-                    Hashtable<String, String[]> IndexColsForOneIndex = new Hashtable<String, String[]>();
-                    Table table = DeserializeTable("src/main/resources/data/" + tableName + ".bin");
-                    Vector<String> indexes = table.indicies;
-                    for (int i2 = 0; i2 < indexes.size(); i++) {
-                        Index index1 = Index.DeserializeIndex(indexes.get(i2));
-                        indexedCols = intersection(index1.colNames, columns);
-                        IndexColsForOneIndex.put(index1.indexId, indexedCols);
                     }
                     //end
+                    SQLTerm[] conditions = new SQLTerm[conditionsOfNonIndexedColumns.size()];
 
-                    // condition on columns have index
-                    for (int i1 = 0; i1 < noOfConditions; i1++) {
-                        if (indexedColumns.contains(sqlTerms[i1]._strColumnName)) {
-                            //searchInIndex(sqlTerms[i1]);
-                        }
+                    Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> rows_resulted_from_nonindexed_columns = loopPagesWithCondition(tableName, conditionsOfNonIndexedColumns.toArray(conditions));
+
+                    Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> hashtableOfAllConditions = new Hashtable<SQLTerm, Vector<Hashtable<String, Object>>>();
+                    hashtableOfAllConditions.putAll(rows_resulted_from_nonindexed_columns);
+                    hashtableOfAllConditions.putAll(rowsOfIndexedConditions);
+
+                    Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> result = new Hashtable<SQLTerm, Vector<Hashtable<String, Object>>>();
+                    for (int m = 0; m < sqlTerms.length; m++) {
+                        result.put(sqlTerms[m], hashtableOfAllConditions.get(sqlTerms[i]));
                     }
-                }
-                //end
-                SQLTerm[] conditions = new SQLTerm[conditionsOfNonIndexedColumns.size()];
 
-                Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> rows_resulted_from_nonindexed_columns = loopPagesWithCondition(tableName, conditionsOfNonIndexedColumns.toArray(conditions));
-
-                Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> hashtableOfAllConditions = new Hashtable<SQLTerm, Vector<Hashtable<String, Object>>>();
-                hashtableOfAllConditions.putAll(rows_resulted_from_nonindexed_columns);
-                hashtableOfAllConditions.putAll(rowsOfIndexedConditions);
-
-                Hashtable<SQLTerm, Vector<Hashtable<String, Object>>> result = new Hashtable<SQLTerm, Vector<Hashtable<String, Object>>>();
-                for (int m = 0; m < sqlTerms.length; m++) {
-                    result.put(sqlTerms[m], hashtableOfAllConditions.get(sqlTerms[i]));
-                }
-
-                Vector<Hashtable<String, Object>> finalResult = loopOnOperators(result, arrayOperators);
-                Iterator finalFinalResult = finalResult.iterator();
-                index.serializeIndex();
-                return finalFinalResult;
+                    Vector<Hashtable<String, Object>> finalResult = loopOnOperators(result, arrayOperators);
+                    Iterator finalFinalResult = finalResult.iterator();
+                    index.serializeIndex();
+                    return finalFinalResult;
+                }}
+            catch(Exception e){
+                System.out.print(e.getMessage());
             }}
-        catch(Exception e){
-            System.out.print(e.getMessage());
-        }
         return null;
     }
 
@@ -2705,7 +2746,7 @@ public class DBApp implements DBAppInterface {
         Vector c = (Vector) i.grid.get(0);
         c.add(9);
         i.grid.set(0,c);
-      // Vector y = (Vector) x.get(0);
+        // Vector y = (Vector) x.get(0);
 
         System.out.println(i.grid);
 
