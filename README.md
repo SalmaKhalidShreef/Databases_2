@@ -10,5 +10,4 @@ updating tuples.
 searching in tables linearly.
 creating a grid  index.
 searching using grid index.
-deleting 
-simple select queries.
+simple queries.
